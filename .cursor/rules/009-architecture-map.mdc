@@ -1,0 +1,20 @@
+---
+description: Mappa di compatibilità tra architettura Antigravity e Cursor.
+alwaysApply: true
+---
+
+# Architecture Map
+
+Mappa di riferimento:
+
+- Source legacy: `@.agent/ARCHITECTURE.md`
+- Guide cross-platform: `@.agent/CROSS_PLATFORM_ARCHITECTURE.md`
+
+Traduzione operativa:
+- `agents/` -> `.cursor/agents/` (subagents Cursor)
+- `skills/` -> `.cursor/skills/` (junction verso `.agent/skills/`)
+- `workflows/` -> `.cursor/commands/`
+- `rules/` -> `.cursor/rules/*.mdc`
+- `memory/` -> regola always-on + `AGENTS.md`
+
+Mantieni `.agent/` intatta per retrocompatibilita con Antigravity IDE.

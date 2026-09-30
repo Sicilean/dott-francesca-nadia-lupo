@@ -1,0 +1,54 @@
+# dependencies
+node_modules/
+
+# next
+.next/
+out/
+
+# typescript
+*.tsbuildinfo
+
+# env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# vercel
+.vercel
+
+# sanity local state and generated studio artifacts
+.sanity/
+studio/.sanity/
+studio/dist/
+studio/schema.json
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# test
+coverage/
+
+# os and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# machine-local tip commit label (never commit)
+commit-prefix.local
+
+# local agent plans, not part of the site
+.cursor/plans/

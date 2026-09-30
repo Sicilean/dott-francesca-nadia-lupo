@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "prompt",
+        "matcher": "Write",
+        "prompt": "Stai per eseguire una scrittura file (Write). Prima di autorizzare questa modifica, applica i gate Fase 1+2 della skill lateral-thinking-engineering: (1.1) SSOT scan: esiste gia qualcosa di simile? (1.2) Atomic audit: atom/molecule/organism corretto? (1.3) API contract: props chiare, estendibili, senza prop explosion? (1.4) DRY: niente duplicazione non giustificata. (2.1) SOLID check rapido. (2.2) SoC: UI separata da business logic. (2.3) Composition over configuration. (2.4) Naming coerente. (2.7) a11y minima. Se uno di questi check fallisce, fermati, correggi il piano di modifica e solo dopo procedi. Input: $ARGUMENTS",
+        "timeout": 10
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "type": "prompt",
+        "prompt": "Hai appena modificato un file. Esegui subito i check Fase 3 (AFTER) della skill lateral-thinking-engineering prima di continuare: (3.1) SSOT verification (duplicati?), (3.2) API audit (coerenza props), (3.3) Generic-first (domain-agnostic), (3.5) Code smell scan (funzioni troppo lunghe, nesting alto, magic values), (3.7) Backward compatibility (consumer esistenti). Se qualsiasi check fallisce, fermati e risolvi prima della prossima modifica. Input: $ARGUMENTS",
+        "timeout": 10
+      }
+    ],
+    "subagentStart": [
+      {
+        "type": "prompt",
+        "prompt": "Stai avviando un subagente. I subagenti non ereditano automaticamente Rule/Skill/Hook del contesto principale. Nel prompt del subagente includi sempre le istruzioni essenziali della checklist lateral-thinking-engineering, almeno: SOLID, Separation of Concerns, naming coerente, a11y minima, composition over configuration, backward compatibility. Se il task del subagente prevede scrittura codice, richiedi esplicitamente anche verifiche BEFORE e AFTER. Input: $ARGUMENTS",
+        "timeout": 10
+      }
+    ]
+  }
+}

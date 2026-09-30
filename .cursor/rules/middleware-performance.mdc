@@ -1,0 +1,25 @@
+---
+description: Best practices per Next.js middleware Foodli — ridurre session refresh non necessari
+globs: "**/middleware.ts"
+alwaysApply: false
+---
+
+# Middleware Performance
+
+## Matcher: escludi sempre asset statici
+
+Il matcher deve escludere tutte le risorse che non beneficiano di auth/session refresh:
+- `_next/static`, `_next/image`
+- `favicon.ico`, `manifest.json`, `robots.txt`, `sitemap.xml`
+- `.well-known/*` (Chrome DevTools, PWA)
+- File con estensioni media/font: `.svg`, `.png`, `.jpg`, `.webp`, `.woff2`, `.ttf`, `.css`, `.js`, `.map`
+
+## NO_SESSION_PATHS: early exit per API senza cookie
+
+Endpoint che non ricevono cookie browser (webhook, dati pubblici) devono essere in `NO_SESSION_PATHS` per saltare completamente il session refresh Supabase.
+
+## Regola: ogni nuovo path API deve dichiarare se necessita auth
+
+Quando aggiungi un nuovo endpoint, decidi esplicitamente:
+- Ha bisogno di sessione utente? -> Non aggiungere a NO_SESSION_PATHS
+- È pubblico/webhook? -> Aggiungi a NO_SESSION_PATHS + publicPaths

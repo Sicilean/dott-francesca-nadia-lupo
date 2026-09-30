@@ -1,0 +1,145 @@
+---
+description: Strategie di rendering (ISR vs SSR vs client real-time), workflow draft/published, preview mode, on-demand revalidation via webhook da Convex actions. Applicare quando si discutono performance, caching, pubblicazione, o qualsiasi cosa legata a come le pagine arrivano al browser.
+globs: app/**, convex/**, next.config.*
+alwaysApply: false
+---
+
+# Rendering & Publishing
+
+## Le tre modalità di rendering disponibili
+
+Ogni pagina del sistema può essere renderizzata in tre modi fondamentalmente diversi. Capire quando usare quale è la decisione architetturale più importante per performance e SEO.
+
+**Client-side real-time** — Il componente usa `useQuery` di Convex. Il server ritorna HTML vuoto (o scheletro), il browser fa il fetch e subscribe live ai cambiamenti. Pro: sincronizzato in tempo reale, nessun caching da invalidare. Contro: bad SEO (contenuto iniettato da JS, anche se Google ormai indicizza bene), first paint lenta, dipende da JS abilitato.
+
+**Server-side rendering (SSR)** — Il server component fa `fetchQuery` a Convex ad ogni request, renderizza HTML completo. Pro: SEO perfetto, first paint veloce. Contro: ogni request hits Convex (costa, è più lento di cache), nessun caching lato CDN.
+
+**Incremental Static Regeneration (ISR)** — La pagina è statica (HTML pre-generato, servito da CDN Vercel ultra-veloce). Quando il contenuto cambia in Convex, un webhook invalida la cache e la prossima richiesta trigger un background rebuild. Pro: performance migliore possibile (CDN cache hit), SEO perfetto, costi Convex minimi (query rare). Contro: richiede setup del webhook per invalidation, piccolo delay tra publish e visibilità (pochi secondi).
+
+## La strategia: ISR pubblico + real-time admin
+
+Per questa piattaforma, la scelta corretta è:
+
+**Frontend pubblico**: ISR con on-demand revalidation.
+- Le pagine sono statiche, servite dal CDN Vercel.
+- I tenant ottengono performance ottimali (first paint sub-secondo, costi di serving minimi).
+- Google indicizza tutto senza problemi.
+- Quando l'admin pubblica modifiche, una Convex action chiama un endpoint Next.js di revalidation che invalida la cache per i tag specifici.
+
+**Admin Panel**: client-side real-time.
+- `useQuery` ovunque.
+- L'editor vede modifiche collaborative live.
+- Il real-time è il vero valore aggiunto di Convex — usalo qui.
+- First paint un po' lenta ma gli admin lo tollerano.
+
+**Preview mode**: SSR.
+- Quando un admin attiva preview per vedere la pagina in "modalità sito pubblico ma con draft", rendering server-side senza cache (query Convex ad ogni refresh). Nessun beneficio dal CDN cache perché la preview è temporanea e personale.
+
+## Il modello draft/published
+
+Ogni pagina ha due stati di contenuto vivi contemporaneamente. Il pattern minimale:
+
+- `publishedBlocks: [...]` — cosa il pubblico vede.
+- `draftBlocks: [...]` — cosa l'editor sta modificando (mai visibile al pubblico).
+- `status: "draft" | "published" | "archived"` — stato della pagina.
+- `publishedAt: number` — quando pubblicata l'ultima volta.
+- `lastEditedAt: number` — ultima modifica del draft.
+
+Quando un editor apre la pagina nell'admin, vede `draftBlocks`. Le sue modifiche aggiornano `draftBlocks`. Cliccare "Pubblica" copia `draftBlocks` in `publishedBlocks` e setta `publishedAt`.
+
+**Prima pubblicazione**: una pagina mai pubblicata ha `status: "draft"` e `publishedBlocks: null` (o empty). Il frontend pubblico ritorna 404 per pagine non ancora pubblicate. L'editor può lavorarci indefinitamente senza che nessuno veda niente.
+
+**Riapertura dopo publish**: dopo aver pubblicato, l'editor potrebbe rivolere modificare. Le sue modifiche ricreano un draft divergente dal published. Questo è ok: il pubblico continua a vedere published, l'editor vede draft. Al prossimo publish, draft sostituisce published.
+
+**Discard draft**: un bottone "Annulla modifiche" resetta `draftBlocks = publishedBlocks`. Utile per ricominciare da zero.
+
+**Versioning**: se vuoi una history ("torna alla versione di ieri"), ogni publish crea anche una riga in `pageRevisions`. Per MVP, skip.
+
+## Preview mode
+
+Il flow completo di preview è:
+
+1. L'editor clicca "Preview" nell'admin.
+2. L'admin chiama un endpoint Next.js `/api/preview-enter` (POST) con `{ pageId, tenantId }`.
+3. L'endpoint verifica auth (l'utente è loggato, ha ruolo su quel tenant).
+4. L'endpoint chiama `draftMode().enable()` di Next.js — setta un cookie signed `__prerender_bypass` (gestito internamente da Next).
+5. L'endpoint redirige a `/<tenantSlug>/<pageSlug>` (o passa il target URL come return param).
+6. Il server component della catch-all legge `draftMode().isEnabled` all'inizio. Se true, chiama `getDraftPage` invece di `getPublishedPage`.
+7. Un banner fisso in cima alla pagina ("🔍 Modalità Anteprima — [Esci]") è visibile solo se draftMode è attivo.
+8. Cliccare "Esci" chiama `/api/preview-exit` che fa `draftMode().disable()` e redirect alla pagina pubblica normale.
+
+In draft mode, disabilita il caching Vercel (Next.js lo fa automaticamente se draftMode è enabled). Ogni refresh fa una query fresca a Convex.
+
+**Security note**: chi ha diritto di entrare in preview mode? Deve essere sempre lo stesso check di auth + membership del tenant. Un utente random non deve poter forzare preview per vedere bozze del tenant.
+
+## On-demand revalidation
+
+Quando un admin pubblica una modifica, il contenuto cambia in Convex. Ma la pagina statica ISR su Vercel ha il contenuto vecchio in cache. Bisogna invalidare.
+
+Il pattern è questo:
+
+1. La mutation Convex `publishPage({ pageId })` aggiorna i dati e schedula una Convex action.
+2. La Convex action fa un POST all'endpoint Next.js `/api/revalidate` passando il tag da invalidare (es. `tenant-${tenantId}-page-${slug}`) e un **secret signed** per autenticare che la request viene davvero dalla tua Convex deployment (non da un attaccante che trova l'endpoint).
+3. L'endpoint Next.js valida il secret. Chiama `revalidateTag(tag)`.
+4. La prossima request a quella pagina trigger un rebuild. I visitatori continuano a vedere il contenuto vecchio (stale-while-revalidate) fino a che il rebuild è pronto — zero downtime.
+
+**Perché action e non la mutation direttamente?** Perché le mutation Convex non possono fare HTTP calls esterne (sono deterministiche, transazionali, stesso runtime V8 ristretto). Le actions sì — sono l'escape hatch per side effects esterni.
+
+## Tag naming convention
+
+Per revalidation on-demand devi taggare le pagine quando le fetch-i. Next.js `fetch` accetta un `{ next: { tags: [...] } }` option. In alternativa, `fetchQuery` di Convex può essere wrapped per supportare tag.
+
+Convenzione di naming dei tag:
+- `tenant-{tenantId}` — tutto il contenuto di un tenant (usato per cambi globali come aggiornare i settings).
+- `tenant-{tenantId}-page-{slug}` — una specifica pagina.
+- `tenant-{tenantId}-sitemap` — sitemap del tenant.
+- `tenant-{tenantId}-settings` — dati siteSettings.
+
+Quando pubblichi una pagina, invalida `tenant-{tenantId}-page-{slug}` e `tenant-{tenantId}-sitemap`. Quando cambi settings (logo, navigation), invalida `tenant-{tenantId}` (tutto, per sicurezza).
+
+**Granularità vs over-invalidation**: troppo granulare = ogni cambio di blocco invalida una singola pagina, ma cambi globali (logo nel header) richiedono invalidare N pagine. Troppo grosso = ogni piccola modifica rigenera tutto il sito. Trova l'equilibrio: pagina = granularità base, settings globali = tag per tutto il tenant.
+
+## Quando la pagina dipende da altri dati
+
+Se una pagina "home" di un tenant mostra "ultimi corsi" e i corsi sono una tabella separata, il pattern è:
+
+1. La query `getPublishedPage({ tenantId, slug: "" })` ritorna la home con i suoi blocchi.
+2. Uno dei blocchi è `{ type: "latestCourses", limit: 4 }` — non contiene i corsi effettivi, solo parametri.
+3. Il componente `<LatestCoursesBlock>` fa la sua query Convex per i corsi.
+
+Problemi da ISR: se la lista corsi cambia, come invalidi? Opzioni:
+- **Tag condivisi**: tagga la query dei corsi con `tenant-{tenantId}-courses`. Quando un corso viene modificato, invalida quel tag. La home che usa quel tag si rigenera automaticamente.
+- **Time-based fallback**: setta `revalidate: 300` (5 minuti) sulla query corsi. Accetti che i corsi aggiornati appaiano entro 5 minuti.
+- **Escape hatch**: rendering del blocco `<LatestCoursesBlock>` client-side (fa `useQuery` in un client component). La pagina base resta ISR, quel blocco è dinamico. Next.js supporta hybrid rendering con `<Suspense>` e streaming.
+
+La terza opzione è spesso la più pulita per data altamente dinamici (prezzi, inventario, liste live).
+
+## Static generation al build
+
+Vercel/Next.js supporta `generateStaticParams` per pre-generare pagine al build time invece che on-demand alla prima request. Per un sistema con N tenant e M pagine ciascuno, generare tutto al build può essere inefficiente e rallenta i deploy.
+
+**Raccomandazione**: non usare `generateStaticParams` per la catch-all `[[...slug]]`. Lascia che la generazione sia on-demand alla prima request di ogni URL. Vercel cacha i risultati e li serve dal CDN.
+
+Se hai tenant particolarmente traffic-pesanti, puoi pre-warm le loro pagine più visitate con un script che fa request HEAD dopo il deploy. Ma è ottimizzazione prematura per MVP.
+
+## Metrics e performance
+
+Monitora:
+- **Cache hit rate sul CDN Vercel** — se è <80%, qualcosa non va (troppe revalidation, ISR non funziona).
+- **Latency delle query Convex** — p95 dovrebbe stare sotto 100ms. Se no, indici mancanti.
+- **Time to revalidate** — quanti secondi tra publish e visibilità al visitor. Dovrebbe essere <5 secondi.
+- **Page size** — documento page con blocchi può crescere. Se supera 500KB, considera se blocchi sono troppo verbosi o andrebbero in tabella separata.
+
+## Cosa NON fare
+
+**Non usare `cache: "no-store"` o `revalidate: 0` di default per le pagine pubbliche.** Quello è SSR puro e annulla tutti i benefici di ISR. Usa ISR + on-demand invalidation.
+
+**Non fare `revalidatePath('/')` o invalidazioni grossolane "per sicurezza".** Invalidare tutto il sito ad ogni piccolo publish rende il CDN inutile. Usa tag granulari. Il tuo sistema diventa scalabile solo con invalidation chirurgica.
+
+**Non mescolare draft e published nel frontend pubblico.** Se anche una sola query pubblica accede a `draftBlocks`, un attaccante che la trova può vedere bozze di qualsiasi tenant. Draft queries sono SEMPRE authenticated, published queries sono pubbliche ma filtrano `status === "published"`.
+
+**Non dimenticare di settare il secret per l'endpoint `/api/revalidate`.** Senza secret, chiunque può DoS-are il tuo sito chiamando l'endpoint in loop e triggherando rebuild infiniti.
+
+**Non scordare di revalidare anche la sitemap quando pubblichi/elimini pagine.** Altrimenti Google indicizza pagine che non esistono più o non trova quelle nuove.
+
+**Non usare ISR per sezioni dell'admin.** L'admin deve essere real-time. Mescolare ISR lì è uno dei modi più confusi di rompere l'UX ("perché vedo dati vecchi?").

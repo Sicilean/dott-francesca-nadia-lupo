@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "modes": [
+    {
+      "id": "orchestrator",
+      "name": "Orchestrator",
+      "description": "Coordina subagenti multipli per task cross-domain.",
+      "subagent": "orchestrator"
+    },
+    {
+      "id": "planner",
+      "name": "Planner",
+      "description": "Pianificazione, scope e breakdown operativo.",
+      "subagent": "project-planner"
+    },
+    {
+      "id": "mobile",
+      "name": "Mobile",
+      "description": "Sviluppo mobile Expo/React Native.",
+      "subagent": "mobile-developer"
+    },
+    {
+      "id": "frontend",
+      "name": "Frontend",
+      "description": "UI/UX web e componenti client.",
+      "subagent": "frontend-specialist"
+    },
+    {
+      "id": "backend",
+      "name": "Backend",
+      "description": "API, business logic e integrazioni dati.",
+      "subagent": "backend-specialist"
+    },
+    {
+      "id": "debugger",
+      "name": "Debugger",
+      "description": "Root-cause analysis e fix profondi.",
+      "subagent": "debugger"
+    },
+    {
+      "id": "tester",
+      "name": "Tester",
+      "description": "Validazione quality gate e test strategy.",
+      "subagent": "test-engineer"
+    },
+    {
+      "id": "security",
+      "name": "Security",
+      "description": "Audit sicurezza e hardening.",
+      "subagent": "security-auditor"
+    }
+  ]
+}

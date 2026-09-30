@@ -1,0 +1,146 @@
+---
+description: Come creare programmaticamente un nuovo tenant (nuovo sito cliente) sulla piattaforma — provisioning flow, seed di default, binding dominio, onboarding. Applicare quando si implementano feature di creazione tenant, onboarding, o gestione multi-site.
+globs: convex/tenants*.ts, convex/provisioning*.ts, app/admin/platform/**, app/onboarding/**
+alwaysApply: false
+---
+
+# Tenant Provisioning
+
+## Il requisito: nuovo sito = operazione dati
+
+Aggiungere un nuovo sito cliente alla piattaforma DEVE essere un'operazione che richiede zero deploy, zero modifiche al codice, zero touch di infrastruttura (eccetto DNS per domini custom). Un platform admin (tu) preme un pulsante, inserisce alcuni dati, e il sito esiste.
+
+Questo è il discriminante tra un CMS custom "fatto bene" e un pasticcio. Se creare un tenant richiede modifiche al codice, l'architettura multi-tenant è rotta.
+
+## Il flow di provisioning
+
+Il provisioning di un tenant è una sequenza ordinata. Ogni step è una mutation/action Convex (o parte di una transazione se possibile):
+
+**1. Creazione del record tenant** — Inserimento in `tenants` con: nome pubblico, slug (unico, usato per subdomain), owner userId, plan (free/pro/enterprise), stato iniziale ("active" o "trial"), timestamp. Questo è l'atomo base: senza questa riga, nessun'altra operazione può procedere.
+
+**2. Creazione della membership owner** — Inserimento in `memberships` con role `owner`, legando lo user creatore al tenant. Senza questa riga, l'utente che ha appena creato il tenant non ha accesso ad esso (anti-pattern hilarante ma succede).
+
+**3. Seed dei siteSettings di default** — Valori ragionevoli per il brand: colori neutri, logo placeholder, menu navigazione vuoto, footer con solo copyright generico, dati di contatto placeholder. L'utente customizzerà dopo. Meglio un default povero che niente: un sito con `siteSettings` null crasha i componenti che li leggono.
+
+**4. Seed di pagine di default** — Una homepage basica con un hero block, una pagina "Chi siamo" con placeholder, una pagina "Contatti" con un form di contatto default. Ogni pagina è `status: "draft"` (l'utente le vede e può modificare prima di pubblicare) oppure `"published"` (il sito è subito live). Raccomandazione: `"published"` con contenuto placeholder visibilmente placeholder ("Lorem ipsum — modifica qui" ) così l'onboarding percepisce che "qualcosa esiste" dal primo momento.
+
+**5. Seed di 404 e template speciali** — Una pagina 404 di default con un messaggio generico e link alla homepage.
+
+**6. Binding iniziale del dominio** — Configura subdomain automatico (`{slug}.piattaforma.com`). Verifica DNS wildcard della piattaforma. Niente custom domain a questo step (è operazione separata più avanti).
+
+**7. Notifiche e onboarding** — Email di benvenuto all'owner con link all'admin, guida di primi passi, ecc.
+
+**8. Audit log** — Record dell'evento "tenant created" con chi, quando, parametri.
+
+Se uno step fallisce, bisogna gestire il rollback. Convex mutation sono transazionali internamente, ma il flow completo spesso coinvolge anche actions (per email, webhook). Se l'email fallisce ma il tenant è creato, è ok (l'admin ri-invia). Se il tenant è creato ma la membership no, è un bug critico.
+
+## Templates di provisioning
+
+Diverse "nicchie" di cliente potrebbero volere default diversi. Una scuola di inglese vuole pagine "Corsi", "Docenti", "Prezzi". Un ristorante vuole "Menu", "Prenotazioni". Un'agenzia vuole "Servizi", "Portfolio".
+
+Pattern: definire **templates di provisioning** come oggetti in un file di configurazione (es. `convex/provisioning/templates.ts`). Ogni template contiene:
+- Nome e descrizione (per UI di selezione).
+- Array di pagine da creare con i loro blocchi di default.
+- Settings di default specifici (colori, menu, ecc.).
+- Opzionalmente media di default (placeholder images).
+
+Al momento della creazione tenant, l'admin sceglie un template. Il codice di provisioning itera sulle pagine del template e le crea per il nuovo tenant.
+
+Aggiungere un nuovo template = aggiungere un oggetto a quel file. Zero deploy necessari per avere un template nuovo (è solo data che viene letto al provisioning).
+
+**Separazione concettuale**: templates di provisioning (gli starter) sono diversi dai tipi di blocchi (il registry). I templates USANO i tipi di blocchi per comporre le pagine iniziali.
+
+## Chi può creare tenant
+
+Opzioni:
+
+**A. Solo platform admin.** Tu o il tuo team. I clienti non possono creare tenant — li crei tu a mano quando firmano un contratto. Giusto per: modello B2B managed, dove il tuo valore è hand-holding.
+
+**B. Self-service con registrazione.** Chiunque si registra può creare un tenant. Flow: signup → onboarding wizard → tenant creato automaticamente. Giusto per: modello SaaS scalabile (freemium, trial, conversion-driven).
+
+**C. Invite-only self-service.** Platform admin genera invite code, chi lo ha può registrarsi e creare tenant. Giusto per: early access, beta controllata.
+
+Per un MVP commerciale, (A) è spesso il modo giusto di partire: test i casi d'uso manualmente, identifica i pain point, poi automatizza. (B) richiede billing integration, limiti di piani, customer support — ambito ben più ampio.
+
+## Custom domains
+
+Il binding di un dominio custom al tenant è un'operazione separata, post-provisioning:
+
+1. L'admin del tenant inserisce il loro dominio (`www.scuolarossi.it`) nell'Admin Panel.
+2. Il sistema mostra istruzioni DNS: aggiungere un record CNAME che punta a `cname.vercel-dns.com` (o IP A record).
+3. Il sistema registra il dominio via Vercel API sul progetto.
+4. Vercel provisiona il certificato SSL (Let's Encrypt automatico).
+5. Una volta verificato (check periodico o webhook da Vercel), il documento `tenants` viene aggiornato con `customDomain: "www.scuolarossi.it"` e `customDomainVerified: true`.
+6. Il middleware ora risolve quel dominio al tenant.
+
+Vercel ha API ufficiali per questo: `POST /v9/projects/{projectId}/domains`. Gestisci gli errori comuni (dominio già in uso, DNS non configurato, timeout di verifica).
+
+Per dev environment e staging, salta i custom domains. Usa solo subdomain della piattaforma.
+
+## Seeding con cautela
+
+Alcuni consigli pratici sul seed dei contenuti:
+
+**Usa placeholder espliciti.** `"Il tuo titolo qui"` invece di `"Benvenuto nella nostra scuola"`. Se un tenant dimentica di modificare, meglio che sia ovvio che il contenuto è placeholder. Meglio ancora: un'etichetta visuale "BOZZA" sul sito pubblico finché c'è contenuto placeholder.
+
+**Non seedare immagini specifiche.** Usa una "hero image" generica astratta, non foto che sembrino specifiche. Lo risparmia il cliente che pensa "ma perché ci sono foto che non sono mie".
+
+**Seed minimal, non ottimale.** Meglio 3 pagine base che 15 pagine complete. L'utente farà più danni (o confusione) se trova un sito troppo grosso da modificare. Un sito con Home + Chi Siamo + Contatti è un minimum viable starting point.
+
+**Documenta cosa è seed.** Un field `isSeedContent: true` su un blocco può essere utile — l'admin può distinguere "questo è placeholder che devo riempire" da "questo l'ho scritto io".
+
+## Multi-site dashboard
+
+Un utente con accesso a più tenant ha bisogno di un'UI per switchare. Pattern: la prima pagina dopo login (`/admin`) mostra una griglia di tenant cards (nome, logo, stato) con un "switch to this site". Sotto, sezione "Create new site" se l'utente ha permesso di provisioning.
+
+Lo switch è solo navigazione: il tenant corrente è determinato dal path `/admin/[tenantId]`. Non serve stato globale "active tenant" — è nell'URL.
+
+Un utente in 30 tenant? Serve search e filtri. Ma parti da grid semplice.
+
+## Sospensione e eliminazione
+
+**Sospensione** (tenant inadempiente, problema di abuse, fase di non-pagamento):
+- `tenants.status = "suspended"`.
+- Il middleware rileva tenant sospesi e mostra una pagina "Questo sito è temporaneamente non disponibile".
+- Gli admin del tenant vedono l'admin ma non possono pubblicare modifiche.
+- Durata: temporanea. Il platform admin può riattivare.
+
+**Soft delete** (tenant che sospende il servizio, archivio):
+- `tenants.status = "archived"` + `archivedAt` timestamp.
+- Il sito pubblico ritorna 404 o una pagina "sito non più disponibile".
+- I dati restano in Convex per X giorni (es. 90) — restorable.
+- L'admin pubblico non è accessibile se non al platform admin.
+
+**Hard delete** (eliminazione definitiva, dopo il periodo di retention):
+- Scheduled action che, dopo 90+ giorni di archived, esegue eliminazione.
+- Elimina: `tenants`, `memberships` (filtrate per tenantId), `pages` (filtrate per tenantId), `media` (+ elimina storage), `siteSettings`, eventuali altri tenant-scoped records.
+- NON eliminare `users` (utenti possono essere in altri tenant).
+- Loggare l'eliminazione completa per audit.
+
+Per GDPR: permetti all'owner di richiedere eliminazione immediata del proprio tenant con i dati associati. Anche i dati dei membri (se contengono PII come email, nomi) dovrebbero essere gestiti secondo la policy.
+
+## Quote e limiti per piano
+
+Se hai piani (free, pro, enterprise), ogni tenant ha limiti legati al piano:
+- Numero massimo di pagine.
+- Storage media (bytes).
+- Numero di membri.
+- Feature flags (es. "custom domain" disponibile solo su pro).
+
+Pattern: un campo `plan` sul tenant, un file di config che mappa piano → limiti, e tutte le operazioni che potrebbero superare un limite controllano prima di procedere. Errori chiari all'utente ("Hai raggiunto il limite di 10 pagine del piano Free. Upgrade per aggiungere altre.").
+
+Non fare i check via if-else sparsi: centralizza in helper tipo `canAddPage(tenant)`, `canUploadMedia(tenant, size)`.
+
+## Cosa NON fare
+
+**Non permettere la creazione tenant via mutation pubblica senza validazione.** Una mutation `createTenant` esposta pubblicamente senza auth permetterebbe a chiunque di flooding la piattaforma di tenant. Richiedi auth, e eventualmente rate limit (max N tenant per user per giorno).
+
+**Non lasciare un tenant orfano.** Una creazione tenant che fallisce a metà flow crea record parziali. Usa transazioni dove possibile (mutation Convex sono transazionali) e gestisci rollback esplicito per i casi cross-transaction (actions, external API).
+
+**Non permettere al tenant di scegliere il proprio tenantId interno (l'ID Convex).** Il tenantId è un'identità tecnica. Lo slug del tenant (che può essere parte dell'URL) sì, il cliente lo sceglie. Ma il `v.id("tenants")` è generato da Convex.
+
+**Non hardcodare le pagine seed nel codice che le genera.** Estrai i template in config data. Riutilizzo, manutenzione, testing molto più facili.
+
+**Non saltare il check di unicità dello slug.** Due tenant con slug "scuola-rossi" crashano il sistema di routing (lookup ambiguo). Prima di creare, verifica che lo slug sia libero. Se no, proponi variants (`scuola-rossi-2`) o chiedi all'utente di sceglierne un altro.
+
+**Non confondere "utente creatore" con "utente owner del tenant".** Sono la stessa persona inizialmente, ma potrebbero divergere (owner transfer). Modella owner esplicitamente in `memberships` con role `owner`, non come campo su `tenants`. Se devi tenere "chi ha creato il tenant" per motivi di audit, un campo `createdBy` sul tenant va bene, ma non usarlo per autorizzazione.

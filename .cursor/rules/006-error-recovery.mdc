@@ -1,0 +1,12 @@
+---
+description: Recovery strutturato di errori e impedimenti.
+alwaysApply: true
+---
+
+# Error Recovery
+
+Quando emergono errori/bug/blocchi, segui il protocollo di:
+
+`@.agent/rules/error-recovery.md`
+
+Correggi la causa radice, evita workaround superficiali, e ri-verifica dopo il fix.

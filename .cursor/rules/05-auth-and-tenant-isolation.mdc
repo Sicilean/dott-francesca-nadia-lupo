@@ -1,0 +1,170 @@
+---
+description: Autenticazione, autorizzazione, e isolamento multi-tenant. CRITICO per la sicurezza della piattaforma. Applicare SEMPRE quando si lavora su mutation/query Convex, middleware, route admin, o qualsiasi cosa tocchi dati di tenant.
+globs: convex/**, middleware.ts, proxy.ts, app/admin/**, app/(admin)/**
+alwaysApply: false
+---
+
+# Auth & Tenant Isolation
+
+## La regola d'oro
+
+**Il middleware Next.js non è sicurezza. È UX.**
+
+Questa frase va internalizzata. Il middleware protegge l'UI — impedisce a un utente non loggato di vedere la pagina admin, o redirige alla login. Ma Convex è una **public API**: chiunque con un browser può aprire la console dev tools, leggere la funzione mutation, e chiamarla direttamente con argomenti arbitrari. Nessun middleware Next.js può fermarlo.
+
+La **vera** sicurezza sta dentro ogni singola query e mutation Convex. Se quei controlli mancano o sono bucati, il sistema è vulnerabile indipendentemente da quanto è blindato il middleware.
+
+Questa skill descrive come architettare auth e autorizzazione a regola d'arte.
+
+## La scelta del provider di auth
+
+Due opzioni principali, entrambe ben integrate con Convex:
+
+**Clerk** — Provider SaaS dedicato. UI componenti pronti (SignIn, SignUp, UserButton), MFA, social login, organizations, webhooks. Convex ha una integrazione documentata: i token JWT di Clerk vengono validati da Convex che esporla `ctx.auth.getUserIdentity()`. Clerk costa (freemium con limiti). Setup rapido, ottimo per MVP e prodotti commerciali.
+
+**Convex Auth** — Soluzione nativa Convex, open source, zero costi aggiuntivi. Meno feature di Clerk (no UI pronti, devi costruire login page), ma supporta email/password, magic link, OAuth. Template ufficiale con role-based permissions (`convex-auth-with-role-based-permissions`). Più codice da scrivere, più controllo.
+
+**Raccomandazione**: Clerk per MVP e progetti con timeline stretta. Convex Auth per progetti che vogliono minimizzare vendor lock-in o costi. La scelta non influenza pesantemente le altre skills — l'architettura di autorizzazione a valle è identica.
+
+## Il modello: user globale, membership per tenant
+
+Come descritto in `01-multi-tenant-data-model`, il modello di auth è:
+
+- **`users`** — account globali. Un user ha un'email, un nome, un ID dal provider di auth (Clerk subject o Convex Auth userId).
+- **`memberships`** — tabella di join tra users e tenants con un ruolo. Un user può essere in 5 tenant con 5 ruoli diversi.
+
+Un utente loggato potrebbe non avere accesso a nessun tenant (appena registrato, mai invitato). L'UI dovrebbe gestire questo caso con un empty state ("Non fai parte di nessun sito. Chiedi un invito all'admin.").
+
+## I ruoli
+
+I ruoli tipici per tenant (adattali al tuo caso):
+
+- **`owner`** — creatore del tenant, può fare tutto inclusi gestire membri e billing. Solitamente uno per tenant, ma può essere trasferito.
+- **`admin`** — può fare tutto eccetto gestire membri (o può, dipende dalla policy) e billing.
+- **`editor`** — può modificare contenuto (pagine, media) ma non i settings del sito o i membri.
+- **`viewer`** — può solo vedere il draft (utile per clienti che vogliono review senza potere di modifica).
+
+Usa un union di literals nel validator Convex: `v.union(v.literal("owner"), v.literal("admin"), v.literal("editor"), v.literal("viewer"))`. NON usare stringhe libere.
+
+Esiste anche un ruolo **di piattaforma** (fuori dal modello tenant): `platformAdmin` — tu e il tuo team. Può accedere a tutto, gestire tenant, fare maintenance. Tipicamente memorizzato come campo booleano o enum sull'entity `users` stessa, non in `memberships`.
+
+## I tre check di sicurezza obbligatori
+
+Ogni mutation/query Convex che tocca dati di un tenant deve passare tutti e tre questi check, tipicamente tramite una funzione helper:
+
+**Check 1: l'utente è autenticato.** `const identity = await ctx.auth.getUserIdentity()`. Se `null`, `throw new Error("Unauthorized")`. Questo filtra chiunque non loggato.
+
+**Check 2: l'utente ha una membership per il tenant in questione.** Query su `memberships` per `(userId, tenantId)`. Se non esiste, l'utente è loggato ma non ha accesso a questo tenant — `throw new Error("Forbidden")`.
+
+**Check 3: il ruolo dell'utente è sufficiente per l'azione.** Se la mutation è `deletePage`, il ruolo minimo potrebbe essere `editor`. Se è `inviteMember`, potrebbe essere `admin`. Se la membership esiste ma il ruolo non basta, `throw new Error("Forbidden: insufficient role")`.
+
+## Helper functions: non ripetere questo in ogni mutation
+
+Se ogni mutation contiene 10 righe di check auth, ti ritrovi con un disastro di duplicazione. Crea helper functions in un file tipo `convex/lib/auth.ts`:
+
+- `requireUser(ctx)` — ritorna l'user identity o throw. Usato da tutte le funzioni autenticate.
+- `requireTenantMember(ctx, tenantId)` — ritorna `{ user, membership }` o throw se l'utente non è membro del tenant.
+- `requireRole(ctx, tenantId, minimumRole)` — come sopra ma verifica anche il ruolo.
+- `requirePlatformAdmin(ctx)` — per operazioni di super-admin.
+
+Il pattern in ogni mutation:
+
+```
+const { user, membership } = await requireRole(ctx, args.tenantId, "editor");
+// Ora sei sicuro. Procedi con la logica.
+```
+
+Questo rende ogni mutation:
+1. Auto-documentata (la prima riga dice cosa richiede).
+2. Impossibile da dimenticare (se non scrivi la riga, la mutation fallisce a runtime per accessi legittimi durante test).
+3. Facilmente modificabile in un unico posto (se cambi la definizione di ruolo, cambi l'helper).
+
+## Le query pubbliche
+
+Il frontend pubblico (il sito della scuola di inglese visibile ai visitatori anonimi) fa query a Convex senza auth. Come le proteggi?
+
+**Regola**: le query pubbliche possono accedere SOLO a dati explicitly marked come pubblici.
+
+Questo significa:
+- La query `getPublishedPage({ tenantId, slug })` può ritornare la pagina SOLO se `status === "published"`. Mai bozze.
+- La query può ritornare SOLO i `publishedBlocks`, mai i `draftBlocks`.
+- Nessuna query pubblica può ritornare dati di `memberships`, `users`, `auditLog`, `settings sensibili` (es. API keys, webhook secrets).
+- La tabella `tenants` può essere query-ata pubblicamente solo per campi pubblici (nome, logo, slug) — non `billingStatus`, `notes`, `suspensionReason`.
+
+Implementa questo a livello di query: una query "pubblica" è letteralmente una funzione Convex diversa da quella "admin", non la stessa con un flag. Esempio:
+- `getPublishedPage` (public) — ritorna solo pages con `status === "published"`.
+- `getPageForEditor` (auth required) — ritorna la pagina completa inclusi draftBlocks.
+
+Nominate diversamente, invocate diversamente, impossibile confondere.
+
+## Tenant isolation in pratica
+
+Ogni query/mutation riceve un `tenantId` come argomento (o lo deriva dall'identity dell'utente se fa azioni su un tenant solo suo). Il check base è:
+
+1. Valida che l'utente abbia diritto di accedere a quel `tenantId` (via `requireTenantMember`).
+2. Usa `tenantId` nel filtro di ogni query Convex downstream.
+
+Esempio anti-pattern da NON fare:
+
+> La mutation `updatePage({ pageId, blocks })` riceve solo pageId. Cerca la page, la aggiorna. Dimentica di verificare che l'utente abbia accesso al tenant della page.
+
+Questo è un bug critico. Un utente con una membership per il tenant A può chiamare `updatePage` passando un pageId del tenant B (se scopre l'ID). L'aggiornamento andrà a buon fine.
+
+**Pattern corretto**:
+1. La mutation riceve `pageId`.
+2. Fetch della page: `const page = await ctx.db.get(pageId)`. Se null, 404.
+3. Extract del `tenantId` dalla page.
+4. `await requireRole(ctx, page.tenantId, "editor")`.
+5. Procedi con l'update.
+
+In alternativa, passa sempre esplicitamente `tenantId` come argomento e verifica che matchi. Entrambi i pattern vanno bene, purché siano sistematici.
+
+## Il middleware
+
+Il middleware Next.js fa da gatekeeper UI per route `/admin/*`:
+
+1. Verifica che l'utente sia loggato (via Clerk's `auth()` o helper di Convex Auth). Se no, redirect a `/sign-in`.
+2. Per route `/admin/[tenantId]/*`, potenzialmente fa un check rapido che l'utente sia membro del tenant (opzionale, ma migliora l'UX evitando di mostrare una pagina che poi fallirà su query).
+3. Per route `/admin/platform/*`, verifica che l'utente sia `platformAdmin`.
+
+Il middleware **NON** deve essere l'unico punto di check. Convex fa i suoi check indipendenti. Il middleware è un fast path per l'UX: intercetta accessi palesemente non autorizzati prima di caricare tutta la pagina.
+
+## Webhooks e sincronizzazione
+
+Se usi Clerk, devi sincronizzare gli users da Clerk al tuo Convex `users` table. Due pattern:
+
+**Webhook sync** — Clerk manda un webhook a un endpoint Next.js `/api/webhooks/clerk` su eventi `user.created`, `user.updated`, `user.deleted`. L'endpoint valida la firma del webhook e chiama una mutation Convex che sincronizza i dati.
+
+**Lazy sync** — La prima volta che un utente fa un'azione (es. chiama `requireUser`), se l'identity Clerk esiste ma il documento Convex no, lo crei al volo.
+
+Raccomandazione: usa entrambi. Webhook sync per eventi (delete, role change da Clerk Organizations), lazy sync come safety net per edge case.
+
+## Multi-factor e sessioni
+
+Per clienti paying che gestiscono siti di business, considera seriamente MFA. Clerk lo supporta out-of-the-box. Convex Auth richiede implementazione custom.
+
+Sessioni: Clerk e Convex Auth gestiscono auto-refresh dei token. Non reinventare.
+
+## Secrets
+
+Alcuni valori non devono MAI essere nel client bundle:
+- Secret di Clerk (CLERK_SECRET_KEY).
+- Convex deployment URL di admin (se diverso dal pubblico).
+- Webhook signing secrets.
+- API keys di terze parti (SendGrid per invite email, Stripe per billing, ecc.).
+
+Usali solo in server-only code: server components, route handlers, Convex actions. Env variables senza prefisso `NEXT_PUBLIC_`.
+
+## Cosa NON fare
+
+**Non mettere il `role` dell'utente come custom claim nel JWT e fidartici senza verifica.** Il JWT è self-contained e l'utente lo possiede — potrebbe teoricamente manipolarlo (anche se la firma protegge). Meglio: JWT contiene `userId` (immutabile), e il ruolo si verifica sempre da `memberships` al momento della chiamata. Le session claims sono una cache, non una fonte di verità.
+
+**Non usare query Convex pubbliche per "fare auth al volo".** Una query pubblica che accetta una password in args è un anti-pattern enorme (password in chiaro in URL/logs, no rate limiting, no MFA). L'auth deve sempre passare dal provider dedicato.
+
+**Non concedere al ruolo `editor` il permesso di invitare altri utenti.** Invitare = espandere la superficie di accesso al tenant. Solo `admin` e `owner`. Escalation di privilegi è il vettore di attacco numero uno in multi-tenant SaaS.
+
+**Non fare "soft delete" senza pensarci.** Se elimini un utente dalla piattaforma, cosa succede alle sue `memberships`? Ai contenuti creati? Agli audit log? Il default comune è: soft delete dell'user (marker `isDeleted: true`), rimozione hard delle memberships, mantenimento dei contenuti ma il riferimento `updatedBy` resta all'ID orfano. Documenta la policy.
+
+**Non permettere a un utente di cambiare il proprio ruolo.** Sembra ovvio ma succede: una mutation "updateUser" che accetta `role` come argomento e l'utente modifica il proprio documento. Sempre: cambio ruolo = operazione separata che richiede ruolo `admin` sul tenant e non può modificare il proprio ruolo (previene un `admin` dal demotare-e-poi-elevare in loop).
+
+**Non scrivere "TODO: add auth check" e committare.** Mai. Se la mutation non ha i check, non viene merged. I check non sono un refinement: sono il codice stesso.

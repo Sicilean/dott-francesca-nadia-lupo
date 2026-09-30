@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "github-projects": {
+      "command": "uvx",
+      "args": ["mcp-github-projects"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "convex": {
+      "command": "npx",
+      "args": ["-y", "convex@latest", "mcp", "start"]
+    },
+    "github": {
+      "serverURL": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_TOKEN}"
+      }
+    },
+    "vercel": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.vercel.com"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    }
+  }
+}

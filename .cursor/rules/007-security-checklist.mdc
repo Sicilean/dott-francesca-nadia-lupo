@@ -1,0 +1,12 @@
+---
+description: Checklist sicurezza minima obbligatoria per cambi sensibili.
+alwaysApply: true
+---
+
+# Security Checklist
+
+Usa la checklist sicurezza da:
+
+`@.agent/rules/SECURITY_CHECKLIST.md`
+
+Per auth, pagamenti, dati sensibili o esposizione pubblica, eleva automaticamente il livello di audit.

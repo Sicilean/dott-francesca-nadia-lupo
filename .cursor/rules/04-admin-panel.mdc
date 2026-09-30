@@ -1,0 +1,162 @@
+---
+description: Architettura dell'Admin Panel — struttura URL, editor di pagina, preview, block picker, gestione media/utenti/settings, scoping per tenant. Applicare quando si lavora sotto app/admin/ o si costruiscono UI di editing.
+globs: app/admin/**, app/(admin)/**, components/admin/**
+alwaysApply: false
+---
+
+# Admin Panel Architecture
+
+## Struttura di base
+
+L'Admin Panel è l'applicazione React che permette agli utenti autorizzati di modificare il contenuto dei tenant a cui hanno accesso. Vive sotto il prefisso `/admin` (o `/app`, `/dashboard` — scegli una convenzione).
+
+L'Admin è un'area **completamente diversa** dal sito pubblico a livello di requisiti:
+- Sempre autenticata (middleware blocca accessi anonimi).
+- Sempre real-time (usa `useQuery` di Convex, non ISR).
+- Client-heavy (tanti form, drag-and-drop, interazioni).
+- Può usare librerie "pesanti" che non vorresti sul frontend pubblico (rich text editor, date picker avanzati, ecc.).
+
+Mantenere le due aree mentalmente separate aiuta a non contaminarle. Nessun blocco del sito pubblico dovrebbe dipendere da un componente dell'admin e viceversa.
+
+## Scoping per tenant nell'URL
+
+Un utente umano può avere accesso a più tenant (es. un'agenzia che gestisce 10 siti cliente). L'URL dell'admin deve riflettere il tenant corrente:
+
+**Pattern consigliato**: `/admin/[tenantId]/...`. Esempio: `/admin/scuola-rossi/pages`, `/admin/scuola-rossi/pages/edit/home`, `/admin/scuola-rossi/media`.
+
+Questo ha vantaggi multipli:
+- Il tenant corrente è sempre esplicito nell'URL (no stato ambiguo).
+- Switchare tenant = click su un link che cambia il segmento.
+- Bookmarkable: un admin può salvare l'URL di una pagina di un sito specifico.
+- Tutte le query Convex dentro quella route ricevono il tenantId dai params — niente magia globale.
+
+La prima cosa che un admin vede appena loggato è una **"tenant picker" page** (`/admin`) che mostra tutti i tenant a cui ha accesso (via `memberships`) e permette di selezionarne uno. Una volta selezionato, redirige a `/admin/[tenantId]/pages`.
+
+## Le sezioni principali dell'Admin
+
+Un Admin Panel minimo completo ha queste sezioni. Valuta quali servono al tuo caso d'uso.
+
+**Dashboard** (`/admin/[tenantId]`) — Landing page del tenant. Statistiche rapide (pagine pubblicate, ultima modifica, membri), quick actions (crea nuova pagina, vai ai media).
+
+**Pages** (`/admin/[tenantId]/pages`) — Lista delle pagine del tenant. Ogni riga mostra: titolo, slug, status (draft/published/archived), ultimo modificato da chi e quando. Filtri per status, search per titolo/slug. Azioni per riga: modifica, duplica, archivia, elimina, "view live" (apre il sito pubblico).
+
+**Page Editor** (`/admin/[tenantId]/pages/[pageId]`) — Il cuore del sistema. Vedi sezione dedicata sotto.
+
+**Media Library** (`/admin/[tenantId]/media`) — Grid di tutte le immagini/file del tenant. Upload (singolo e bulk), search per filename/alt, filtri per tipo. Modifica metadata (alt text, caption) cliccando su un media. Delete con conferma (e avviso se il media è in uso da qualche pagina).
+
+**Site Settings** (`/admin/[tenantId]/settings`) — Logo, favicon, colori brand, menu navigation, footer, social links, dati di contatto, Google Analytics ID, meta default per SEO. Una form grande divisa in sezioni/tab.
+
+**Members** (`/admin/[tenantId]/members`) — Solo per ruolo `owner` o `admin` del tenant. Lista dei membri con ruoli, invita nuovo membro, cambia ruolo, rimuovi.
+
+**Profile / Account** (`/admin/account`) — Settings dell'utente (non del tenant): nome, email, password (se auth locale), tenant di default.
+
+**(Super-admin)** (`/admin/platform`) — Sezione accessibile solo agli admin di piattaforma (te, non i clienti). Lista di tutti i tenant, creazione nuovo tenant, sospensione, billing. Vedi skill `08-tenant-provisioning`.
+
+## Il Page Editor
+
+È il componente più complesso dell'admin. Un layout comune è **due pannelli**:
+
+**Pannello sinistro (o in testa): la lista dei blocchi.** Ogni blocco è una card con il suo tipo, un mini-preview o il titolo del blocco, e azioni (modifica, duplica, elimina, sposta su/giù). Drag-and-drop per riordinare. Un bottone "+ Aggiungi blocco" in fondo che apre il block picker.
+
+**Pannello destro (o sotto): l'editor del blocco selezionato.** Quando clicchi un blocco nella lista, il suo componente di editing si apre nel pannello destro. I form fields permettono di modificare i dati del blocco. Ogni modifica aggiorna lo stato locale.
+
+**In alto: la toolbar.** Pulsanti "Salva bozza", "Anteprima", "Pubblica". Indicatore di stato ("salvato", "modifiche non salvate", "in pubblicazione..."). Campo per lo slug e il titolo della pagina. Status selector (draft/published).
+
+**Opzionale: pannello di preview live.** Un iframe che mostra la pagina renderizzata con le modifiche in tempo reale. È un lusso: per un MVP un bottone "Anteprima" che apre la pagina in un'altra tab in preview mode è sufficiente.
+
+## Gestione dello stato nell'editor
+
+La gestione dello stato nell'editor di pagina è sottile. Opzioni:
+
+**A. Stato locale React + save esplicito.** L'editor tiene i blocchi in `useState`. Ogni modifica aggiorna lo stato. "Salva" chiama la mutation Convex `updatePageDraft`. Pro: semplice, prevedibile. Contro: se il browser crasha, si perdono modifiche non salvate.
+
+**B. Auto-save con debounce.** Come (A) ma con `useEffect` che chiama la mutation 1-2 secondi dopo l'ultima modifica. Pro: nessuna perdita di dati. Contro: più chiamate al server, gestione di race condition (cosa se due modifiche veloci si sovrappongono?).
+
+**C. Ottimistic update con Convex real-time.** L'editor usa `useQuery` per i draft e `useMutation` per ogni singola modifica granulare (update di un campo). Convex gestisce ottimistic updates e sync. Pro: collaborazione multi-utente naturale. Contro: complessità maggiore, molte mutation piccole.
+
+**Raccomandazione**: (B) per iniziare. (C) se emerge requisito di collaborazione real-time. (A) se preferisci semplicità assoluta.
+
+Indipendentemente dalla scelta, proteggi contro navigazione via con modifiche non salvate: `beforeunload` listener che avverte l'utente.
+
+## Il Block Picker
+
+Quando l'utente clicca "+ Aggiungi blocco" si apre un picker (modal o drawer) con la lista dei tipi di blocco disponibili. Ogni tipo è una card con:
+- Icona o preview dell'aspetto.
+- Label visibile ("Sezione Hero", "Griglia Testimonials").
+- Descrizione breve ("Un header grande con titolo, sottotitolo e CTA").
+- Categoria ("Layout", "Media", "Form", "Content").
+
+Il picker legge dal registry di editing (vedi skill `02-block-system`). Categorie, label, icone, descrizioni vengono da lì. Aggiungere un nuovo tipo di blocco → appare automaticamente nel picker.
+
+Click su un tipo → crea un nuovo blocco con i valori di default (definiti nel registry), lo inserisce nell'array della pagina, lo seleziona nell'editor.
+
+## Field components riutilizzabili
+
+L'admin ha una libreria di form field components usati dagli editor di blocchi. Tipicamente:
+
+- `<TextField>` — input text semplice.
+- `<TextAreaField>` — textarea per testo multi-riga non formattato.
+- `<RichTextField>` — editor rich text (Tiptap o Lexical). Output: markdown o JSON strutturato.
+- `<ImageField>` — apre il media picker, permette di selezionare un'immagine esistente o uploadarne una nuova. Salva il `storageId` (o `mediaId`) nel dato.
+- `<LinkField>` — gestisce `{ href, label, target, rel }`. Può supportare link interni (picker di pagine del tenant) vs esterni.
+- `<SelectField>` — dropdown con opzioni predefinite.
+- `<ToggleField>` — boolean on/off.
+- `<ColorField>` — se davvero serve (ma vedi nota in skill `02` sul "troppo configurabili").
+- `<NumberField>` — input numerico.
+- `<DateField>` — date picker.
+- `<RepeaterField>` — per array di sub-items. Riceve uno schema di item e un render function per ogni item. Gestisce add/remove/reorder.
+
+Tutti i field components hanno interfaccia uniforme: `value` + `onChange`. Questo rende trivial comporli negli editor di blocchi.
+
+## Media Picker
+
+Il media picker è un componente modal che mostra la media library filtrata per il tenant corrente, con:
+- Grid di thumbnail.
+- Upload area (drag-and-drop di nuovi file).
+- Search.
+- Filtri per tipo (immagini, documenti).
+- Selezione (single o multi, a seconda del contesto).
+- Preview dettagliato di un media selezionato con i suoi metadata.
+
+Il picker ritorna uno `storageId` (o `mediaId`) al chiamante. Vedi skill `06-media-and-assets` per i dettagli del flow di upload.
+
+## Preview mode
+
+Quando l'editor clicca "Anteprima", apre la pagina pubblica in modalità preview. Questo è un flow delicato:
+
+1. L'admin chiama un endpoint Next.js `/api/preview` passando il pageId (o slug + tenantId).
+2. L'endpoint verifica che l'utente sia autenticato e abbia accesso a quel tenant.
+3. L'endpoint setta un cookie di preview (signed, scadenza breve, es. 1 ora).
+4. Redirige alla URL pubblica della pagina.
+5. Il server component della catch-all route, quando rileva il cookie di preview valido, chiama `getDraftPage` invece di `getPublishedPage`.
+6. Un banner discreto ("Modalità Anteprima — Exit") in cima alla pagina permette di uscire, che invalida il cookie.
+
+Per Next.js App Router c'è un API specifica: `draftMode()` che gestisce tutto il setup cookie. Usa quello invece di rollarti a mano.
+
+## Real-time dell'admin
+
+L'admin beneficia enormemente della reattività real-time di Convex. Scenari dove questo splende:
+
+- Due editor aprono la stessa pagina: vedono le modifiche dell'altro in tempo reale.
+- Un editor elimina una media mentre un altro la sta referenziando: il secondo vede subito che è sparita.
+- La lista pagine si aggiorna automaticamente quando qualcuno pubblica.
+
+Usa `useQuery` ovunque nell'admin. Nessun motivo di fare SSR lì. La prima paint può essere leggermente più lenta ma l'utente admin la tollera.
+
+## Logging e audit trail
+
+Per un sistema multi-tenant è **molto utile** loggare le azioni significative: chi ha pubblicato cosa, chi ha eliminato cosa, chi ha invitato chi. Pattern semplice: una tabella `auditLog` con `tenantId`, `userId`, `action` (stringa enum), `resourceType`, `resourceId`, `metadata` (json), `createdAt`.
+
+Ogni mutation importante scrive una riga. L'admin può avere una pagina "Attività" che mostra il log. In caso di "chi ha rotto questa pagina?" il log risponde.
+
+## Cosa NON fare
+
+**Non fare dell'admin un'applicazione separata con repo diverso.** Tenerli nello stesso progetto Next.js semplifica auth, types, deploy. Il frontend pubblico e l'admin condividono il layer Convex (tutto).
+
+**Non esporre funzionalità di super-admin ai clienti tenant.** La creazione tenant, la sospensione, il billing sono funzioni di piattaforma. I tenant vedono solo le loro cose. L'UI deve riflettere questo strict separation — meglio due sotto-apps (`/admin/[tenantId]/*` per i clienti, `/admin/platform/*` per te) che un'unica UI con bottoni nascosti da role.
+
+**Non permettere modifiche distruttive senza conferma.** Eliminare una pagina, rimuovere un membro, eliminare un media in uso — tutti richiedono un modal di conferma con la spiegazione delle conseguenze.
+
+**Non fare SSR per le pagine admin.** L'admin è SPA-like (client-side reattivo). Se fai SSR delle pagine admin, perdi il real-time di Convex e complichi l'auth.
+
+**Non inventare il proprio design system.** Usa shadcn/ui o una libreria matura. L'admin è funzionale, non artistico. Ogni ora spesa a pixel-pushare un button è tempo non speso sul core del prodotto.

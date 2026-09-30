@@ -1,0 +1,12 @@
+---
+description: Tracciamento task, stato avanzamento e coerenza esecutiva.
+alwaysApply: true
+---
+
+# Task Tracking
+
+Segui le regole operative di tracciamento in:
+
+`@.agent/rules/task-tracking.md`
+
+Mantieni il lavoro segmentato in task verificabili e aggiorna lo stato durante l'esecuzione.

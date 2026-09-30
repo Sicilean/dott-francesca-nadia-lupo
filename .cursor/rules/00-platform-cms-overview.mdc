@@ -1,0 +1,78 @@
+---
+description: Architettura generale della piattaforma multi-tenant headless CMS custom (Next.js + Convex + Vercel). Applicare SEMPRE come contesto di base quando si lavora su qualsiasi parte del sistema.
+alwaysApply: true
+---
+
+# Platform CMS — Overview Architetturale
+
+## Cos'è questo sistema
+
+Stiamo costruendo una **piattaforma multi-tenant** dove ogni "sito cliente" (es. una scuola di inglese, un ristorante, un'agenzia) è un **tenant** all'interno di una singola applicazione Next.js + Convex deployata su Vercel. Ogni tenant ha:
+
+- I suoi contenuti (pagine, blocchi, media) isolati dagli altri tenant
+- Un Admin Panel dove utenti autorizzati modificano letteralmente tutto il contenuto visibile sul sito pubblico
+- Un frontend pubblico "agnostico" che non contiene nessun contenuto hardcoded — legge tutto dal database e lo renderizza dinamicamente
+
+L'obiettivo è che aggiungere un nuovo sito cliente sia **un'operazione dati**, non un'operazione di deploy. Nessun redeploy, nessuna modifica al codice, nessuna pagina statica committata. Un nuovo tenant = una riga nella tabella `tenants` + contenuti iniziali seeded.
+
+## I tre principi fondamentali
+
+**1. Content as data, non content as code.** Niente stringhe hardcoded nel frontend, niente pagine JSX statiche per "Chi siamo" o "Corsi". Tutto il contenuto visibile deriva da documenti Convex. Il codice del frontend è un *renderer*, non un *autore*.
+
+**2. Tenant isolation by default.** Ogni query, ogni mutation, ogni upload media deve essere scoped a un tenant specifico. L'isolamento non è un layer aggiuntivo: è la struttura base. Una query che non filtra per tenantId è un bug di sicurezza.
+
+**3. Blocks, non pages.** Una "pagina" non è un template rigido con campi predefiniti. È un array ordinato di **blocchi tipizzati** (hero, testimonials, CTA, grid-corsi, form-contatto, ecc.). Aggiungere un nuovo tipo di contenuto = registrare un nuovo tipo di blocco. Questo è il meccanismo di estensibilità principale.
+
+## I pezzi del sistema
+
+Il sistema è composto da nove domini interconnessi. Ognuno ha una skill dedicata che descrive pattern e decisioni architetturali.
+
+**Data model multi-tenant** (`01-multi-tenant-data-model`) — Come è organizzato lo schema Convex: tabelle `tenants`, `memberships`, `pages`, `blocks` (inline o separate), `media`, `siteSettings`. Indici, relazioni, convenzioni di naming. Questa è la fondazione: ogni altra decisione poggia qui.
+
+**Block system** (`02-block-system`) — Il registry pattern: ogni tipo di blocco è dichiarato in un unico posto con il suo schema di validazione, il suo componente React di rendering, e il suo componente React di editing. Il frontend pubblico fa uno switch sul campo `type` del blocco.
+
+**Dynamic routing** (`03-dynamic-routing`) — Come una URL del browser viene risolta in una pagina Convex. Il pattern catch-all di Next.js App Router, la strategia di tenant resolution (subdomain vs custom domain vs path), l'interazione con il middleware.
+
+**Admin panel** (`04-admin-panel`) — Struttura dell'area amministrativa: layout, editor di pagina, preview, gestione media, gestione utenti, settings del sito.
+
+**Auth e tenant isolation** (`05-auth-and-tenant-isolation`) — Come l'autenticazione si aggancia a Convex, come le membership tenant-utente funzionano, e soprattutto: dove si fanno i controlli di sicurezza (spoiler: dentro Convex, non solo nel middleware).
+
+**Media e assets** (`06-media-and-assets`) — Uso del Convex File Storage, upload flow, serving URLs, scoping per tenant, gestione orfani, ottimizzazione.
+
+**Rendering e publishing** (`07-rendering-and-publishing`) — Draft vs published, preview mode, ISR on-demand, revalidation via webhook da Convex actions. Quando usare client-side reattivo vs SSR vs ISR.
+
+**Tenant provisioning** (`08-tenant-provisioning`) — Come si crea programmaticamente un nuovo sito: chi può farlo, cosa viene seeded di default, come si binda un dominio custom, come funziona l'onboarding.
+
+## Data flow ad alto livello
+
+Il ciclo di vita di una pagina pubblica è questo:
+
+Un visitatore colpisce `https://scuola-inglese.piattaforma.com/corsi`. Il middleware Next.js identifica il tenant dal subdomain (o dal dominio custom, o dal primo segmento di path). Il segnale `tenantId` viene passato alla route catch-all `app/[[...slug]]/page.tsx`. La page chiama una query Convex come `getPublishedPage({ tenantId, slug: "corsi" })` che ritorna il documento con l'array di blocchi pubblicati. Il componente `<BlockRenderer>` itera sui blocchi e fa uno switch sul `type`, renderizzando il componente React corrispondente per ciascuno.
+
+Il ciclo di vita di una modifica admin è questo:
+
+Un editor apre `/admin/pages/corsi`, modifica un blocco hero, e clicca "Pubblica". L'Admin Panel chiama una mutation Convex `publishPage({ pageId })`. La mutation valida che l'utente abbia il ruolo giusto PER QUESTO TENANT, copia i draftBlocks in publishedBlocks, aggiorna publishedAt, e schedula una Convex action. L'action chiama l'endpoint Next.js `/api/revalidate` con un secret token, che invoca `revalidateTag(`tenant-${tenantId}-page-${slug}`)`. Alla richiesta successiva, Vercel rigenera la pagina ISR con il contenuto nuovo.
+
+## Regole trasversali che valgono SEMPRE
+
+Alcune regole si applicano ovunque nel codice. Violarle è un bug, anche se "sembra funzionare":
+
+**Ogni query Convex che tocca dati di un tenant DEVE filtrare per tenantId.** Non "dovrebbe", deve. Senza filtro, un utente del tenant A può leggere dati del tenant B. Questo è vero anche per le query pubbliche non autenticate.
+
+**Ogni mutation Convex DEVE validare che l'utente autenticato abbia permesso su quel tenant.** Il middleware Next.js può proteggere l'UI, ma Convex è una public API. Chiunque con un browser può chiamare una mutation direttamente. L'unica linea di difesa reale è dentro la mutation stessa.
+
+**Nessun contenuto visibile al pubblico deve vivere nel codice del frontend.** Se un copywriter non può modificarlo dall'Admin Panel, sta nel posto sbagliato. Il codice definisce *come* il contenuto viene renderizzato, mai *cosa* viene renderizzato. Eccezioni legittime: label tecniche (bottoni "Invia", errori di validazione form), chrome strutturale (stili, layout). Non eccezioni: tagline della scuola, descrizioni corsi, testimonial, indirizzi.
+
+**I nuovi tipi di blocco si aggiungono in un unico posto (il registry), mai sparsi per il codice.** Se per aggiungere un blocco "Video Embed" devi modificare cinque file in tre directory diverse, il pattern è rotto. Il registry è la single source of truth.
+
+**Il frontend pubblico non sa nulla di utenti, ruoli, o autenticazione.** È un renderer read-only. L'autenticazione esiste solo nell'Admin Panel. Questa separazione mentale tiene il sistema semplice.
+
+## Come Cursor deve usare queste skills
+
+Quando l'utente fa una domanda o chiede un'implementazione, Cursor deve:
+
+1. **Identificare in quale dominio cade la richiesta** (data model, block system, routing, admin, auth, media, rendering, provisioning).
+2. **Caricare mentalmente la skill relativa** oltre a questa overview.
+3. **Verificare che la soluzione proposta rispetti le regole trasversali sopra.** Se una soluzione sembra funzionare ma viola l'isolamento tenant o hardcoda contenuto nel frontend, è sbagliata anche se compila.
+4. **Non assumere nomi specifici delle tabelle o dei campi Convex** — parte dello schema esiste già. Chiedere all'utente o leggere `convex/schema.ts` prima di generare codice che ne dipende.
+5. **Proporre l'approccio architettonico prima del codice** per feature non banali. Meglio una domanda di chiarimento che 200 righe da buttare.

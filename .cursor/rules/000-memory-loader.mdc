@@ -1,0 +1,21 @@
+---
+description: Carica memoria persistente Antigravity all'avvio di ogni chat.
+alwaysApply: true
+---
+
+# Memory Loader
+
+Carica sempre il contesto persistente del progetto prima di qualsiasi azione:
+
+- `@.agent/memory/PROJECT_CONTEXT.md`
+- `@.agent/memory/LESSONS_LEARNED.md`
+- `@.agent/memory/USER_PREFERENCES.md`
+- `@.agent/memory/DECISIONS.md`
+- `@.agent/memory/SESSION_LOG.md`
+- `@.agent/memory/ERROR_PATTERNS.md`
+
+Se il task coinvolge gating/verifica, usa anche:
+
+- `@.agent/memory/last_preflight.json`
+
+Questa regola sostituisce il bootstrap memoria di Antigravity mantenendo `.agent/` come sorgente unica.

@@ -1,0 +1,18 @@
+---
+description: Forza l'evocazione della skill lateral-thinking-engineering prima di ogni intervento di sviluppo
+alwaysApply: true
+---
+
+# Lateral Thinking Engineering — Regola Attiva
+
+**Prima di scrivere, modificare o refactorare qualsiasi codice**, DEVI:
+
+1. Leggere e seguire la skill `lateral-thinking-engineering` al path `.cursor/skills/lateral-thinking-engineering/SKILL.md`
+2. Eseguire la **Fase 1 (BEFORE)** della skill completamente prima di toccare qualsiasi file
+3. Applicare la **Fase 2 (DURING)** come gate obbligatorio su ogni modifica
+4. Completare la **Fase 3 (AFTER)** prima di dichiarare il task completato
+5. Quando crei subagenti con `Task`, includere nel prompt del subagente le istruzioni essenziali della Fase 2 (DURING): **SOLID**, **Separation of Concerns**, **naming coerente**, **a11y minima**, **composition over configuration**, piu controllo di **backward compatibility**.
+
+Non e opzionale. Non e una guida. E il tuo processo operativo obbligatorio.
+
+Se un check della skill fallisce, fermati e risolvi prima di procedere.

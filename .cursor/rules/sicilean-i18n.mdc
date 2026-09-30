@@ -1,0 +1,19 @@
+---
+description: Obbliga i18n Sicilean (@sicilean/i18n) per testi utente, copy, toast, errori e middleware
+alwaysApply: true
+---
+
+# Sicilean i18n (obbligatorio)
+
+Per **qualsiasi** stringa visibile all’utente, traduzioni, locale, copy, toast, messaggi di errore, middleware i18n o testo in UI nelle app del monorepo **sicilean-platform**:
+
+1. **Leggi subito** la skill completa: `c:\Users\Rita Gabrieli\.cursor\skills\sicilean-i18n\SKILL.md` e seguila per l’implementazione.
+2. **Non** introdurre testo hardcoded in UI: usa `t()` / `useTranslation` / `getTranslations` da `@sicilean/i18n` (pattern dell’app, es. `@/i18n/client` e `@/i18n/server`).
+3. Italiano prima in `locales/it/`, inglese sempre in `locales/en/`; altre lingue solo se l’app le dichiara in `SUPPORTED_LOCALES` con JSON in `locales/{code}/`.
+4. Rispetta UI vs content locale, header `x-locale` dove previsto, e **niente** locale fissi in `Intl` nel codice prodotto.
+5. **Filesystem = single source of truth** per le lingue: non inserire codici locale hardcoded né liste manuali.
+   - UI locales → generate da `pnpm i18n:generate` nel file `i18n/locales.generated.ts`.
+   - Content locales (Supabase `platform_available_locales`) → aggiornate tramite `pnpm i18n:sync-db` che produce `i18n/sync-content-locales.generated.sql` (idempotente, da applicare via MCP o `supabase db push`).
+   - Dopo aver aggiunto/rimosso una cartella `locales/<code>/`, esegui SEMPRE entrambi i comandi e committa i file generati.
+
+Se il task non tocca testo utente né i18n, questa regola non richiede modifiche; appena tocchi copy o messaggi, applica la skill end-to-end.

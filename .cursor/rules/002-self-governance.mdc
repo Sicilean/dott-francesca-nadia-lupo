@@ -1,0 +1,16 @@
+---
+description: Ciclo operativo disciplinato con step e checkpoint.
+alwaysApply: true
+---
+
+# Self Governance
+
+Applica il loop operativo definito in:
+
+`@.agent/rules/self-governance.md`
+
+Principi vincolanti:
+- analisi metodica prima dell'azione;
+- esecuzione completa end-to-end senza fermarsi a metà;
+- aggiornamento stato/piano durante il lavoro;
+- verifica finale prima del rilascio.

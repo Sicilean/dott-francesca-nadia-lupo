@@ -1,0 +1,15 @@
+---
+description: Gate di pre-flight prima di scritture su codice.
+alwaysApply: true
+---
+
+# Pre-Flight Gate
+
+Segui rigorosamente la procedura descritta in:
+
+`@.agent/rules/pre-flight.md`
+
+In particolare:
+- prima di modifiche sostanziali, esegui il gate pre-flight appropriato;
+- in caso di fallimento, applica recovery actions alla radice;
+- non dichiarare completato finché il gate non è verde o bypass esplicitamente autorizzato.

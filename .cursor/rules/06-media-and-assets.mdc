@@ -1,0 +1,137 @@
+---
+description: Gestione media e asset con Convex File Storage — upload flow, metadata, scoping per tenant, serving, ottimizzazione, cleanup. Applicare quando si lavora su upload, media library, image rendering, o tabella media.
+globs: convex/media*.ts, convex/files*.ts, components/**/MediaPicker*, app/api/upload/**
+alwaysApply: false
+---
+
+# Media & Assets
+
+## Il tool: Convex File Storage
+
+Convex ha storage nativo di file integrato. Per questa piattaforma è la scelta giusta: zero infrastruttura aggiuntiva, costi integrati nel piano Convex, permessi gestiti dalla stessa logica di auth delle tue mutation.
+
+Alternative considerate e scartate per MVP: S3 (richiede setup AWS, IAM, CORS), Cloudinary (ottimo per image optimization ma costoso ed è un vendor in più), UploadThing (servizio terzo per un problema risolvibile nativamente).
+
+Se in futuro emerge bisogno di CDN globale o image optimization avanzata, puoi migrare a Cloudinary/Bunny in un secondo momento — i componenti di rendering leggono uno `storageId` opaco, cambiare il backend di storage è sostituibile dietro il helper `getMediaUrl`.
+
+## Il flow di upload
+
+Convex supporta due pattern di upload. Quello corretto per questa piattaforma è il **pattern "signed upload URL"**:
+
+1. Il client (Admin Panel) chiama una Convex mutation `generateUploadUrl()` che:
+   - Verifica che l'utente abbia ruolo sufficiente (editor+) sul tenant.
+   - Chiama `ctx.storage.generateUploadUrl()` (API Convex) che ritorna una URL temporanea firmata.
+   - Ritorna la URL al client.
+2. Il client fa POST diretto a quella URL con il file. Convex riceve il file e salva. Nella response ottieni uno `storageId`.
+3. Il client chiama una Convex mutation `registerMedia({ storageId, filename, mimeType, size, alt, tenantId })` che:
+   - Verifica di nuovo i permessi (il client potrebbe aver cambiato cose tra step 1 e step 3).
+   - Inserisce una riga nella tabella `media` con il `storageId` e i metadata.
+   - Ritorna il documento media.
+
+Perché non fare tutto in una mutation? Perché le mutation Convex hanno un limite sulla dimensione della response (~1MB). Upload diretto al bucket non passa dalla mutation, quindi supporta file arbitrariamente grandi (limite timeout di 2 minuti per il POST).
+
+C'è un pattern alternativo con HTTP action (Convex supporta anche endpoint HTTP custom che ricevono il file direttamente) ma ha limite 20MB. Usa signed URL.
+
+## La tabella `media`
+
+Struttura base, già descritta in skill `01` ma rilevante qui:
+
+- `tenantId` — scoping fondamentale, indicizzato.
+- `storageId` — l'ID tecnico Convex.
+- `filename` — nome originale del file, utile per UI (non per URL — l'URL è derivato da storageId).
+- `mimeType` — `image/jpeg`, `application/pdf`, ecc.
+- `size` — bytes, per UI e quota tracking.
+- `alt` — testo alternativo per accessibilità. Per le immagini è obbligatorio per un sito SEO-friendly.
+- `width` / `height` — opzionali per immagini, utili per layout shift prevention (Next.js Image richiede queste).
+- `caption` — opzionale.
+- `uploadedBy` — userId.
+- `createdAt` — timestamp.
+
+Puoi estrarre width/height al momento del registerMedia lato client (tramite `new Image()` prima dell'upload) o lato server via action Convex che fa image processing.
+
+## Serving: da storageId a URL
+
+Quando il frontend pubblico renderizza un'immagine, ha un `storageId` nel dato del blocco. Per ottenere la URL pubblica usa `ctx.storage.getUrl(storageId)` dentro una query Convex. La URL è valida indefinitamente (finché il file esiste) ed è servita da Convex stesso.
+
+**Important**: la URL di Convex non è un CDN globale ultra-ottimizzato come Cloudinary. Per sito pubblico ad alto traffico puoi:
+- Mettere Vercel davanti con caching aggressivo (le immagini non cambiano spesso).
+- Usare `next/image` che fa lazy loading, sizing responsivo, e passa attraverso l'image optimization di Vercel/Next.js.
+
+Il pattern consigliato è: il server component della page fa una query Convex che ritorna la pagina + per ogni blocco con immagine, la URL già risolta. Il frontend riceve URL già calcolate. Il componente `<BlockRenderer>` passa le URL a `<Image>` di Next.js.
+
+## Scoping per tenant — sempre
+
+Ogni operazione sui media va validata per tenant:
+
+- **Upload** — l'utente uploada per tenant A, `generateUploadUrl` e `registerMedia` validano ruolo su tenant A. Il documento media ha `tenantId: tenantA`.
+- **List** — la query `listMedia({ tenantId })` ritorna SOLO media di quel tenant. Check di membership.
+- **Select** — il media picker nel block editor mostra solo media del tenant della pagina in editing. Se l'editor seleziona un mediaId, la mutation di save del blocco deve verificare che quel media appartenga allo stesso tenant della pagina.
+- **Delete** — mutation che verifica ruolo e tenant prima di eliminare.
+
+**Anti-pattern comune**: un blocco della pagina del tenant A referenzia un mediaId del tenant B. Succede per bug o per abuso. Prevenzione: ogni volta che un campo blocco referenzia un media, al save della pagina il check "media.tenantId === page.tenantId" deve passare. Aggiungi questo check nella validation dello schema dei blocchi con media.
+
+## Immagini vs documenti vs video
+
+I requisiti differiscono:
+
+**Immagini** (JPG, PNG, WebP, SVG, AVIF) — il caso più comune. Alt text obbligatorio, metadata width/height utili, optimization via `next/image`. Limita dimensioni al upload (es. max 10MB) — dimensioni troppo grandi rallentano il sito.
+
+**Documenti** (PDF, DOCX) — tipicamente link per download. Non passare per `next/image`. Serve in link con `download` attribute o anchor che apre in nuova tab. Alt text non applicabile; un campo `description` può essere utile.
+
+**Video** — se i tenant caricano video direttamente (non YouTube embed), preparati a file grandi (decine/centinaia di MB). Considera: upload size limits, storage costs, nessuna optimization (serve come MP4 raw), player HTML5 `<video>`. Per la maggior parte dei siti, meglio consigliare YouTube/Vimeo embed al tenant.
+
+**SVG** — attenzione: SVG può contenere JS. Se un tenant uploada un SVG malicioso e il frontend lo renderizza con `<img src>`, il JS non gira. Ma se lo renderizzi inline come HTML, il JS gira. Safe default: rendi sempre via `<img>`.
+
+## Image variants: thumbnail, responsive
+
+`next/image` si occupa automaticamente di generare variants responsive dalla source image. Non serve generare thumbnail a mano all'upload — Vercel lo fa on-demand alla richiesta e le cacha.
+
+Se vuoi thumbnail custom (es. un'immagine "hero" con un preview quadrato per l'admin), puoi:
+- Usare `next/image` anche nell'admin con `width`/`height` diversi.
+- Oppure, se vuoi storage permanente di varianti specifiche, generare al upload via Convex action (usando libreria image processing in Node runtime).
+
+Per MVP: delega tutto a `next/image`.
+
+## Quote e limiti
+
+Un sistema multi-tenant deve tracciare quanto spazio ogni tenant usa, potenzialmente imporre limiti (per piano di subscription). Pattern:
+
+- Il documento `tenants` ha un campo `storageUsed` (bytes) e `storageLimit` (bytes).
+- Ad ogni `registerMedia` incrementi `storageUsed`. Ad ogni delete decrementi.
+- Prima di `generateUploadUrl`, controlli che `storageUsed < storageLimit`.
+
+Questo non è security-critical (i costi Convex scalano con lo storage effettivo, non con il limite dichiarato) ma è commercialmente importante per piani free vs paid.
+
+## Cleanup e orphan files
+
+Un file è "orfano" se nessuna pagina lo referenzia. Questo succede quando:
+- L'admin carica un'immagine, poi cambia idea e non la usa.
+- Un blocco che referenziava un'immagine viene eliminato senza eliminare l'immagine.
+- Un'immagine viene sostituita con un'altra in un blocco (la vecchia non è più in uso ma esiste ancora).
+
+Il modello "safe" è NON auto-eliminare media mai. Tenerli in libreria, dove l'admin può vederli e decidere. Alternativa: un job periodico (Convex scheduled action) che elenca media non referenziati da più di 30 giorni e li marca per review.
+
+**Non eliminare un media solo perché "sembra" non in uso.** Fare un check completo (scorri tutte le pagine, cerca mediaId in tutti i blocchi di tutti i tipi, gestisci campi nested) è complicato e error-prone. Default conservativo: mai auto-delete, solo delete manuale con conferma dell'admin.
+
+Quando un admin elimina manualmente un media, la mutation deve:
+1. Cercare se è in uso da qualche blocco (iterazione sui blocchi di tutte le pagine del tenant).
+2. Se in uso, warning + elenco pagine + conferma esplicita.
+3. Se confermato (o non in uso), chiamare `ctx.storage.delete(storageId)` e `ctx.db.delete(mediaId)`.
+
+## Accessibilità e SEO
+
+Ogni immagine nel sito pubblico deve avere alt text. L'admin UI del media picker e dei field `<ImageField>` deve rendere l'alt text visibilmente obbligatorio (form validation). Un sito senza alt text è un problema di accessibilità (lettori di schermo) e SEO (Google penalizza).
+
+Field "caption" opzionale. Se presente, renderizzato come `<figcaption>` sotto l'immagine.
+
+## Cosa NON fare
+
+**Non salvare il percorso o il filename come URL.** Il URL pubblico va sempre recuperato da `ctx.storage.getUrl(storageId)`. Il filename è solo per UI. Assumere che l'URL sia `https://convex.site/files/{storageId}` o qualsiasi altra convenzione è fragile — Convex può cambiare il dominio, e alcune URL sono signed con scadenza.
+
+**Non permettere upload di qualsiasi MIME type.** Fai una whitelist di tipi accettati: `image/jpeg`, `image/png`, `image/webp`, `image/svg+xml`, `application/pdf`, ecc. Block tutti gli altri. File `.exe` o `.html` uploadati sul tuo storage sono un vettore potenziale di attacco (serving cross-origin di file malicious).
+
+**Non exporre `storageId` in URL pubbliche senza validazione tenant.** Se un URL tipo `/media/{storageId}/download` serve il file senza check tenant, un attaccante può enumerare storageId e scaricare media di altri tenant. Il `getUrl` di Convex dà una URL diretta al file — assicurati che sia ok che questa URL sia "pubblica" (i.e. non contiene dati sensibili). Per contenuti gated (PDF scaricabili solo da utenti loggati), serve un endpoint Next.js che validates auth prima di streaming il file.
+
+**Non duplicare fisicamente un file se più tenant uploadano lo stesso file.** Convex storage non fa dedup automatico. Se stai hostando migliaia di siti che possibilmente uploadano la stessa immagine stock, considera dedup via hash (prima del upload, calcola SHA del file, vedi se esiste già un media per questo tenant con stesso hash). Per MVP, skip.
+
+**Non fare image transformation lato client.** Ridimensionare un'immagine di 10MB a 500KB in browser prima di uploadarla sembra intelligente ma fa perdere qualità. Meglio: uploada originale, lascia che `next/image` generi varianti responsive on-demand.

@@ -1,0 +1,12 @@
+---
+description: Esecuzione iterativa scan-dispatch-execute-update.
+alwaysApply: true
+---
+
+# Ralph Loop
+
+Per task multi-step o complessi, applica il loop operativo descritto in:
+
+`@.agent/rules/ralph-loop.md`
+
+Obiettivo: mantenere coerenza, avanzamento tracciabile e riduzione dei regressi.

@@ -1,0 +1,19 @@
+---
+description: UI/UX Pro Max — best practice predefinite per layout, componenti, stili e accessibilità
+globs: "**/*.tsx,**/*.jsx,**/*.css,**/tailwind.config.ts,**/tailwind.config.js"
+alwaysApply: false
+---
+
+# UI/UX Pro Max (obbligatorio su UI)
+
+Per **qualsiasi** lavoro su interfaccia utente (componenti, pagine, layout, Tailwind/CSS, token visivi, micro-interazioni, responsive, a11y, review UI) nelle app **sicilean-platform**:
+
+1. **Leggi subito** il workflow completo in `.cursor/commands/ui-ux-pro-max.md` e seguilo come riferimento principale (design system, ricerche per dominio, stack, checklist pre-consegna).
+2. **Prima di implementazioni UI sostanziali**, dalla root del repo genera un design system coerente con il motore incluso (adatta la query a prodotto, settore e stack):
+   - Windows: `python .shared/ui-ux-pro-max/scripts/search.py "<query contestuale>" --design-system -p "<Nome progetto o app>"`
+   - Per questo monorepo usa anche ricerche `--stack nextjs` e/o `--stack shadcn` quando implementi in Next.js / shadcn.
+   - Integra con ricerche `--domain ux`, `typography`, `style` solo se servono dettagli aggiuntivi (vedi tabella nel comando).
+3. **Applica** le regole “Common Rules” e la **Pre-Delivery Checklist** del comando (icone SVG, `cursor-pointer`, contrasti, focus, `prefers-reduced-motion`, breakpoint, ecc.).
+4. **Non** sovrascrive l’i18n: copy e stringhe visibili restano governate da `.cursor/rules/sicilean-i18n.mdc` (`t()` / `@sicilean/i18n`). UI Pro Max definisce struttura, gerarchia visiva, interazione e stile — non testo hardcoded.
+
+Se il task non tocca UI/UX (solo logica, API, DB, tipi), questa regola non richiede azioni.

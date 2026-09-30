@@ -1,0 +1,122 @@
+---
+description: Pattern per il routing dinamico database-driven — catch-all routes, tenant resolution da dominio/subdomain/path, 404, metadata, sitemap. Applicare quando si lavora su app/, middleware.ts, o qualsiasi cosa legata alla risoluzione URL→pagina.
+globs: app/**, middleware.ts, proxy.ts
+alwaysApply: false
+---
+
+# Dynamic Routing & Page Resolution
+
+## Il problema: zero pagine Next.js, infinite URL possibili
+
+In un CMS normale ogni pagina è un file JSX committato. In questa piattaforma, ogni tenant può creare le pagine che vuole con gli slug che vuole. `scuola-a.piattaforma.com/chi-siamo`, `scuola-a.piattaforma.com/corsi/business-english/intermedio`, `scuola-b.piattaforma.com/about-us`. Nessuno di questi URL corrisponde a un file nel filesystem Next.js.
+
+La soluzione è una **singola route catch-all** che intercetta tutte le URL possibili e delega la risoluzione al database. Next.js App Router supporta questo tramite la optional catch-all segment `[[...slug]]`.
+
+## L'architettura di routing in tre livelli
+
+La risoluzione di un URL passa attraverso tre livelli, in quest'ordine:
+
+**Livello 1 — Middleware (o Proxy su Next.js 16+).** Intercetta ogni richiesta. Il suo unico job qui è: capire a quale **tenant** appartiene questa richiesta. Estrae il tenant identifier dalla request (subdomain, dominio custom, o primo segmento di path — vedi sotto) e lo propaga al resto della pipeline.
+
+**Livello 2 — La catch-all route.** `app/[[...slug]]/page.tsx` riceve il resto dell'URL come array `slug` (es. `/chi-siamo` → `["chi-siamo"]`, `/corsi/business/intermedio` → `["corsi", "business", "intermedio"]`, `/` → `undefined` o `[]`). Insieme al tenantId identificato dal middleware, compone una query Convex per recuperare la pagina.
+
+**Livello 3 — Il renderer.** Se la pagina è trovata e pubblicata, il renderer itera sui blocchi (vedi skill `02-block-system`). Se non trovata, chiama `notFound()` che fa renderizzare la pagina 404 personalizzata del tenant (anch'essa stored in Convex).
+
+## Strategie di tenant resolution
+
+La scelta su **come** si identifica il tenant da una request è architetturalmente importante e ha implicazioni operative significative. Le tre opzioni principali, dalla più comune alla meno:
+
+**A. Subdomain sulla piattaforma** (es. `scuola-rossi.piattaforma.com`).
+- Pro: URL puliti, naturale per SaaS multi-tenant, facile da gestire su Vercel con wildcard subdomain.
+- Contro: richiede DNS wildcard, certificato SSL wildcard, un minimo di setup DNS.
+- Come si implementa: il middleware legge `req.headers.get("host")`, splitta sul primo punto, e ottiene lo slug del tenant. Lookup su Convex `tenants` via indice `by_slug`.
+
+**B. Dominio custom** (es. `www.scuolarossi.it`).
+- Pro: branding completo del cliente, necessario per clienti che pagano.
+- Contro: richiede che il cliente configuri DNS puntando a Vercel, Vercel richiede verifica dominio, gestione SSL lato Vercel.
+- Come si implementa: middleware legge l'host, se non è il dominio della piattaforma fa lookup su Convex `tenants` via indice `by_custom_domain`. Da coesistere con (A).
+
+**C. Path-based** (es. `piattaforma.com/scuola-rossi/chi-siamo`).
+- Pro: nessuna configurazione DNS, un solo dominio per tutto.
+- Contro: URL meno puliti, meno "professionale", cookies condivisi tra tenant (problema potenziale per isolation).
+- Come si implementa: il primo segmento del path è il tenant slug. La route diventa `app/[tenantSlug]/[[...slug]]/page.tsx`. Nessun middleware necessario per la risoluzione (ma serve per auth).
+
+**Raccomandazione**: supporta entrambe (A) e (B) dall'inizio. (C) come fallback opzionale per test/staging. L'implementazione di (A)+(B) in middleware è 20 righe di codice e rende la piattaforma immediatamente production-grade.
+
+## Il middleware in pratica
+
+Il middleware deve fare pochissime cose, ma farle bene e veloci (viene invocato su OGNI request, incluse asset statici se non escluse dalla matcher config):
+
+1. **Determina il tenant dalla request** usando la strategia scelta (host → slug/domain → tenantId).
+2. **Passa il tenantId ai server component downstream.** Ci sono due meccanismi: (a) un header request custom (`x-tenant-id`) che poi il server component legge via `headers()`, oppure (b) un rewrite dell'URL interno che include il tenantId nel path (pulito ma più magico). Il pattern (a) è più trasparente.
+3. **Protegge le route `/admin`**, richiamando il flusso di auth (Clerk `clerkMiddleware` o Convex Auth helper). Vedi skill `05-auth-and-tenant-isolation`.
+4. **Gestisce il caso tenant non trovato** — se l'host non matcha nessun tenant, redirect a una landing page della piattaforma o renderizza una 404 generica.
+
+Il middleware NON deve fare query Convex pesanti. Il lookup del tenant da host → tenantId dovrebbe essere cached (in-memory per istanza, o usando la edge cache). Un ragionevole pattern: cache TTL 60 secondi per tenant lookup.
+
+## La catch-all route in pratica
+
+`app/[[...slug]]/page.tsx` è una Server Component. Il suo flow:
+
+1. Ricevi `params.slug` (array di segmenti o undefined per homepage).
+2. Ricevi `tenantId` dall'header passato dal middleware (via `headers()` di Next).
+3. Normalizza lo slug: `["chi-siamo"]` → `"chi-siamo"`, `["corsi", "business"]` → `"corsi/business"`, `undefined` → `""` (o `"home"`, a tua scelta come convenzione per la homepage).
+4. Chiama la query Convex `getPublishedPage({ tenantId, slug })`. Usa `fetchQuery` di Convex per server component.
+5. Se null, chiama `notFound()`.
+6. Se trovata, ritorna il JSX che renderizza i blocchi della pagina.
+
+**Una nota su preview mode**: in preview mode (vedi skill `07-rendering-and-publishing`) la query diventa `getDraftPage` che ritorna i `draftBlocks` invece dei `publishedBlocks`.
+
+## generateMetadata
+
+Next.js chiama `generateMetadata` separatamente da `page` per generare il `<head>`. Anche questa funzione deve:
+1. Ricevere `params.slug` e recuperare il `tenantId` dall'header.
+2. Fare una query Convex (tipicamente la stessa `getPublishedPage`, Convex ha request-level caching in Next.js quindi non è una doppia query se ben implementata).
+3. Tornare metadata object con title, description, openGraph, twitter, canonical URL, ecc. popolati dai campi `seo` della pagina o fallback dai `siteSettings` del tenant.
+
+Campi da coprire: `title`, `description`, `openGraph` (title, description, images, url, type), `twitter`, `alternates.canonical`, eventualmente `robots` se una pagina deve essere noindex.
+
+## Sitemap e robots.txt
+
+Entrambi sono dinamici per-tenant.
+
+**Sitemap** (`app/sitemap.ts`): la funzione esportata riceve la request, determina il tenantId (dall'host), fa una query Convex per tutte le pagine published di quel tenant, e ritorna l'array di URL. Se la piattaforma serve domini multipli, serve una sitemap dinamica per host. Next.js supporta `sitemap.ts` per route o file sitemap multipli con `generateSitemaps`.
+
+**Robots.txt** (`app/robots.ts`): simile pattern. Per default permissive, ma il singolo tenant potrebbe voler disallow certe path o l'intero sito (durante sviluppo/staging di un cliente).
+
+## 404 personalizzate per tenant
+
+La pagina 404 non è una `app/not-found.tsx` statica globale. Il tenant potrebbe voler customizzarla (il logo, un messaggio di ricerca, link utili). Opzioni:
+
+- **Blocchi come qualsiasi altra pagina**: tratti il 404 come una pagina speciale con slug `"404"` nel database. Quando `notFound()` viene chiamato, la route `not-found.tsx` fa una query per quella pagina speciale e la renderizza.
+- **404 generica della piattaforma**: più semplice, ma il tenant non può customizzarla.
+
+Il primo pattern è più pulito nel senso della coerenza (tutto è un blocco in una pagina in un tenant) ma richiede handling speciale nel routing.
+
+## Casistiche e edge case
+
+**Homepage** — `slug` è `undefined` o array vuoto. Convenzione: stored come documento con slug `""` (stringa vuota) o `"/"` in Convex. Scegli una convenzione e documentala.
+
+**Slug con slash** — `corsi/business-english` è UN solo slug stored nella `pages`, non una gerarchia di documenti. Il middleware/route non fa lookup ricorsivo: passa la stringa completa a Convex. Se vuoi supportare pagine "parent" (es. la pagina `/corsi` è la landing, `/corsi/business` è una child), quella è logica applicativa che decidi a livello di dati, non di routing.
+
+**Trailing slash** — normalizza. `/corsi/` e `/corsi` dovrebbero risolvere alla stessa pagina. Next.js ha config `trailingSlash` che forza una convenzione.
+
+**Case sensitivity** — URL sono case sensitive di default. La migliore UX è lowercase everywhere. Il middleware può redirigere automaticamente URL uppercase a lowercase.
+
+**Conflict con asset statici** — la catch-all matcha anche `/favicon.ico`? No, Next.js eccettua i file statici. Verifica il matcher config del middleware per escludere `/_next/`, asset, `/api/`.
+
+**Multi-lingua** — se il tenant ha contenuti in più lingue, aggiungi un segmento `[locale]`. La route diventa `app/[locale]/[[...slug]]/page.tsx`. La query Convex include `locale`. Pianifica questo dall'inizio se anche solo una delle scuole potrebbe voler IT+EN.
+
+**Redirects** — il cliente cambia lo slug di una pagina da `/offerta` a `/promozioni`. I vecchi link esterni rompono. Crea una tabella `redirects` con `tenantId`, `fromSlug`, `toSlug`, `statusCode` (301/302). Il middleware (o la catch-all prima di ritornare 404) consulta questa tabella.
+
+## Cosa NON fare
+
+**Non creare file JSX statici per pagine specifiche** ("facciamo /about in codice perché è sempre uguale"). Il momento in cui accetti questa eccezione, il pattern si rompe. Tutti i clienti pretenderanno customizzazioni.
+
+**Non fare query Convex dentro il middleware senza caching.** Il middleware gira su edge runtime, su ogni request. Un lookup DB senza cache ti costa ms moltiplicati per tutto il traffico.
+
+**Non passare oggetti complessi tra middleware e route via header.** L'header è una stringa. Passa solo il tenantId (o lo slug). Il server component fa la sua query Convex per il resto.
+
+**Non fare server component che fa N query per N blocchi.** La query `getPublishedPage` ritorna la pagina completa con tutti i blocchi in un colpo. Blocchi che hanno bisogno di dati live aggiuntivi (es. "lista ultimi corsi") possono fare query proprie, ma come eccezione, non come default.
+
+**Non hardcodare il nome della piattaforma nel middleware.** Usa env variable per il dominio root (`PLATFORM_HOST`). Rende il deploy in staging/preview molto più semplice.

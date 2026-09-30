@@ -1,0 +1,12 @@
+---
+description: Protocollo commit atomici e convenzioni messaggi.
+alwaysApply: true
+---
+
+# Commit Protocol
+
+Quando viene richiesto un commit, applica le regole di:
+
+`@.agent/rules/commit-protocol.md`
+
+Mantieni commit logici, verificati, con messaggi consistenti e senza includere segreti.

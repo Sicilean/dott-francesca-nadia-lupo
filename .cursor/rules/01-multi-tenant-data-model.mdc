@@ -1,0 +1,94 @@
+---
+description: Pattern e decisioni per modellare lo schema Convex della piattaforma multi-tenant (tenants, memberships, pages, blocks, media, settings). Applicare quando si lavora su file in convex/, soprattutto convex/schema.ts e qualsiasi nuova tabella.
+globs: convex/**/*.ts
+alwaysApply: false
+---
+
+# Multi-Tenant Data Model
+
+## La decisione strategica di base: shared DB con tenantId
+
+Per una piattaforma che gestisce decine o centinaia di siti, le opzioni sono tre: (a) database separato per tenant, (b) progetto Convex separato per tenant, (c) schema condiviso con `tenantId` su ogni documento. Per questa piattaforma la scelta è **(c)**.
+
+Ragioni: un singolo deployment Convex è molto più semplice da gestire, le migrazioni si fanno una volta sola, i costi scalano meglio, e il provisioning di un nuovo sito diventa "inserisci una riga" invece di "crea un nuovo progetto infrastrutturale". Lo svantaggio è che la sicurezza dipende interamente dal rispetto disciplinato del filtraggio per tenantId in ogni query. Questa skill e la skill `05-auth-and-tenant-isolation` esistono esattamente per minimizzare quel rischio.
+
+Se in futuro un cliente enterprise richiedesse isolamento fisico totale dei dati, si può spostare quel tenant in un deployment Convex dedicato senza cambiare il codice applicativo — basta un layer di routing. Ma il default resta shared.
+
+## Le tabelle core
+
+Il modello base ha questi gruppi di tabelle. I nomi esatti possono variare se lo schema esistente usa convenzioni diverse: l'importante è che i concetti siano presenti e le responsabilità chiare.
+
+**`tenants`** — Un documento per ogni sito cliente. Contiene metadata del sito: nome interno, nome pubblico, slug della piattaforma (per URL tipo `/sites/nome-tenant` o come subdomain), dominio custom se presente, stato (`active`, `suspended`, `trial`), piano di subscription se rilevante, timestamp di creazione, owner userId. NON contiene contenuto — il contenuto sta in `pages` e `siteSettings`.
+
+**`users`** — Gli account umani che possono loggarsi. Email, nome, provider di auth (Clerk subject ID o Convex Auth user ID), eventuali preferenze globali. Un user è **globale alla piattaforma**, non legato a un tenant. Un utente può avere accesso a più tenant.
+
+**`memberships`** — La tabella di join che connette user ↔ tenant ↔ role. Tre campi fondamentali: `userId`, `tenantId`, `role` (es. `owner`, `admin`, `editor`, `viewer`). Eventualmente un campo `invitedBy` e `joinedAt`. Questa è la tabella che risponde a "questo utente ha permesso di fare X su questo tenant?". Tutti i controlli di autorizzazione la interrogano.
+
+**`pages`** — Le pagine pubbliche di ciascun sito. Campi essenziali: `tenantId`, `slug` (può essere vuoto per la homepage, può contenere slash per pagine annidate come `corsi/business-english`), `title`, `metaDescription`, `publishedBlocks` (array), `draftBlocks` (array), `status` (`draft`, `published`, `archived`), `publishedAt`, `updatedAt`, `updatedBy`. Lo slug è unico per tenant ma non globalmente.
+
+**`media`** — I file caricati (immagini, PDF, video). Campi: `tenantId`, `storageId` (l'ID di Convex File Storage), `filename`, `mimeType`, `size`, `alt` (testo alternativo per accessibilità), `caption` opzionale, `uploadedBy`, `createdAt`. Anche i media sono scoped al tenant: un tenant non deve poter vedere o usare media di un altro tenant.
+
+**`siteSettings`** — Configurazione globale del sito che non è una pagina: logo, favicon, colori principali, menu di navigazione header/footer, social links, dati di contatto, snippet analytics, override SEO globali. Tipicamente modellata come key-value con `tenantId + key` unico, oppure come singleton con un unico documento di settings per tenant. La scelta singleton è più semplice se i campi sono noti a priori; key-value è più flessibile se vuoi permettere all'admin di aggiungere chiavi custom.
+
+**`navigation`** (opzionale, separata da settings) — Se i menu del sito sono complessi (multi-livello, per lingua, per sezione), vale la pena una tabella dedicata con documenti `{ tenantId, location: "header" | "footer", items: [...] }`.
+
+## Indici: non opzionali
+
+Convex **non indicizza automaticamente** i campi usati nei filtri. Una query che fa `.filter(q => q.eq(q.field("tenantId"), tenantId))` su una tabella senza indice su `tenantId` diventa un table scan completo — devastante man mano che la piattaforma cresce.
+
+Gli indici fondamentali da definire nello schema:
+
+- `memberships` → indice su `["userId"]` (per "dammi tutti i tenant di questo utente") e su `["tenantId", "userId"]` (per "questo utente è membro di questo tenant?")
+- `pages` → indice su `["tenantId", "slug"]` (la query più frequente del sistema: risolvi slug a pagina per un tenant). Anche `["tenantId", "status"]` per la lista admin filtrata.
+- `media` → indice su `["tenantId"]` e opzionalmente `["tenantId", "uploadedBy"]`.
+- `siteSettings` → indice su `["tenantId", "key"]` se key-value, altrimenti su `["tenantId"]`.
+- `tenants` → indice su `["slug"]` (per risolvere dominio → tenant) e su `["customDomain"]` se supporti domini custom.
+
+La regola: **ogni tabella con `tenantId` deve avere un indice che inizia per `tenantId`**. Nessuna eccezione.
+
+## Relazioni e ID
+
+Convex usa ID tipizzati (`v.id("tableName")`). Sfrutta questo per auto-documentare le relazioni: `membership.userId: v.id("users")`, `membership.tenantId: v.id("tenants")`, `page.tenantId: v.id("tenants")`. Non usare stringhe opache. Questo dà type safety end-to-end e impedisce di passare accidentalmente l'ID sbagliato.
+
+## I blocchi: inline nella pagina o tabella separata?
+
+Due opzioni legittime, con trade-off diversi.
+
+**Inline** — I blocchi vivono dentro il documento `page`, come array di oggetti. Pro: una sola query risolve tutta la pagina, semplicità, ordinamento implicito nell'array. Contro: il documento page può crescere molto, update di un singolo blocco richiede riscrivere tutto l'array, meno riutilizzabilità dei blocchi tra pagine.
+
+**Tabella separata** — Esiste una tabella `blocks` con `tenantId`, `pageId`, `order`, `type`, `data`. Pro: blocchi modificabili individualmente, possibilità di riutilizzare un blocco su più pagine via reference. Contro: più query (o join manuali), gestione dell'ordine più complessa, transazioni più delicate.
+
+**Raccomandazione**: inline per iniziare. Convex gestisce bene documenti con array di dimensioni medie (qualche decina di blocchi per pagina è tranquillo). Migra a tabella separata solo se emergono requisiti specifici (blocchi condivisi tra pagine, collaborazione multi-utente simultanea sullo stesso blocco).
+
+Nota: esiste un terzo pattern — "global blocks" come testimonial o CTA riutilizzabili — dove il blocco inline contiene solo un **reference ID** a un documento in una tabella `globalBlocks`. Questo è un compromesso pulito quando la maggior parte dei blocchi è one-off ma alcuni specifici devono essere condivisi.
+
+## Pattern di versioning (se serve)
+
+Se il cliente richiede history/revisioni ("torna alla versione di ieri"), NON mescolare la history dentro il documento page. Crea una tabella `pageRevisions` con `tenantId`, `pageId`, `blocks` (snapshot completo), `createdBy`, `createdAt`. Ogni pubblicazione crea una nuova revision. La pagina live referenzia sempre l'ultima revision published. Questo tiene il modello pulito e scala.
+
+Per un MVP, il solo campo `draftBlocks` + `publishedBlocks` sulla pagina è sufficiente. Non introdurre revisioning fino a quando non è richiesto esplicitamente.
+
+## Cosa NON mettere nel modello
+
+**Non duplicare dati tra tenant e page.** Se il nome del sito è in `tenants.name`, non copiarlo anche in ogni pagina "per comodità". Un giorno il cliente rinomina il sito e ti trovi con dati incoerenti.
+
+**Non mettere logica di rendering nel database.** Un blocco salva DATI (`{ type: "hero", title: "...", imageId: "..." }`). Non HTML, non CSS, non React. Il codice decide come quel dato diventa visivo. Se il database contiene `{ html: "<div>..." }` hai ricreato Wordpress nel modo peggiore.
+
+**Non permettere query globali su tabelle tenant-scoped senza autorizzazione esplicita.** Una funzione che fa "dammi tutte le pagine del sistema" non dovrebbe esistere come public query. Esiste solo come internal query dietro autenticazione admin di piattaforma (tu, non i clienti).
+
+## Naming conventions consigliate
+
+- Tabelle: plurale, lowercase (`tenants`, `pages`, `memberships`).
+- Campi: camelCase (`tenantId`, `publishedAt`, `draftBlocks`).
+- Timestamp: sempre `Number` (millisecondi epoch), suffisso `At` (`createdAt`, `publishedAt`).
+- Booleani: prefisso `is` o verbo (`isArchived`, `requiresPayment`). Ma meglio ancora usare union di literals per stati (`status: "draft" | "published" | "archived"`) — più espressivi e estensibili.
+- Foreign keys: `xxxId` con tipo `v.id("xxx")` (`tenantId: v.id("tenants")`).
+
+## Come parlare allo schema esistente
+
+Parte dello schema Convex esiste già. Prima di proporre modifiche:
+
+1. Leggi `convex/schema.ts` per vedere cosa c'è.
+2. Mappa i concetti descritti qui (tenant, membership, page, block, media, settings) ai nomi effettivamente presenti.
+3. Segnala eventuali gap ("manca una tabella memberships" o "tenantId non è indicizzato su pages") come tech debt da indirizzare, ma non sovrascrivere lo schema esistente senza chiedere.
+4. Se un concetto è modellato diversamente (es. ruoli come campo su `users` invece che su `memberships`), rispetta la scelta esistente a meno che non causi problemi di sicurezza — in quel caso segnalalo chiaramente.

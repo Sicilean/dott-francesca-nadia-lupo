@@ -1,0 +1,112 @@
+---
+description: Pattern per il sistema di blocchi del CMS — registry centralizzato, validazione, rendering dinamico, editor. Applicare quando si aggiunge un nuovo tipo di blocco, si modifica il renderer, o si cambia come i blocchi vengono editati nell'admin.
+globs: **/blocks/**, **/components/**, convex/**
+alwaysApply: false
+---
+
+# Block System Design
+
+## Il concetto: la pagina è un array di blocchi tipizzati
+
+Nel CMS una pagina pubblica non è una composizione fissa "header + hero + 3 colonne + footer". È un **array ordinato di blocchi**, ognuno autocontenuto e tipizzato. L'editor può aggiungere, rimuovere, riordinare, e modificare blocchi a piacere. Il frontend li renderizza in ordine.
+
+Questo pattern è usato da Sanity, Contentstack, Builder.io, WordPress Gutenberg. È il modo corretto di costruire un CMS estensibile. Il pattern **sbagliato** (da evitare) è definire template fissi per pagina ("template home", "template corso", "template about") perché ogni nuova esigenza del cliente richiede un nuovo template hardcoded.
+
+## Anatomia di un blocco
+
+Un blocco ha quattro facce. Capirle tutte e quattro è fondamentale per lavorare con il sistema:
+
+**1. Il tipo** — Una stringa identificativa unica (`"hero"`, `"testimonialsGrid"`, `"courseList"`, `"contactForm"`). È la chiave che connette i dati al renderer e all'editor. Non cambiare mai questa stringa una volta che esistono dati in produzione che la usano.
+
+**2. Lo schema di validazione** — Un validator (Convex `v.object({...})` o Zod schema) che descrive ESATTAMENTE quali campi il blocco può avere e di che tipo. Questo schema ha doppio ruolo: valida i dati quando vengono salvati (impedisce dati malformati nel database) e informa il type system TypeScript. Ogni blocco ha il suo schema. Niente `v.any()`.
+
+**3. Il componente di rendering** — Un componente React, lato frontend pubblico, che riceve i dati del blocco come props e produce il markup visibile. Questo componente è puro rendering: non sa nulla di editing, di autenticazione, di admin. Prende `props.data`, ritorna JSX.
+
+**4. Il componente di editing** — Un componente React, lato Admin Panel, che riceve i dati del blocco e una callback `onChange`. Renderizza form fields per modificare ogni campo del blocco. È lui che decide se il campo "immagine" è un media picker o un URL input, se il campo "titolo" è un text input o un rich text editor, ecc.
+
+## Il Registry: single source of truth
+
+Tutti i blocchi vivono in un **registry centralizzato**. Il registry è un oggetto (o una Map) dove le chiavi sono i tipi di blocco e i valori sono oggetti che contengono le quattro facce descritte sopra (o riferimenti ad esse).
+
+Tipicamente il registry è diviso in due "metà" per separare concerns e permettere tree-shaking:
+
+- **Registry condiviso** (importabile sia da Convex che dal frontend): contiene solo `type` e `schema` di ogni blocco. Usato da Convex per validare i dati in input alle mutation. Usato dal frontend per inferire tipi TypeScript.
+- **Registry di rendering** (solo frontend pubblico): mappa `type` → componente React di rendering.
+- **Registry di editing** (solo Admin Panel): mappa `type` → componente React di editing + metadata per l'UI (label visibile, icona, categoria, descrizione per il block picker).
+
+La separazione è importante perché il frontend pubblico non deve includere nel bundle i componenti di editing dell'admin. Sono decine di componenti con dipendenze pesanti (rich text editor, media pickers, color pickers).
+
+## Come si aggiunge un nuovo tipo di blocco
+
+Questa è la checklist concettuale che Cursor deve seguire quando l'utente chiede "aggiungi un blocco X":
+
+1. **Scegli il type string.** Kebab-case o camelCase, coerente con gli altri. Unico. Stabile (non si cambia).
+2. **Definisci lo schema di validazione.** Quali campi, di che tipo, quali opzionali, quali con default. Se un campo è una reference a un media, il campo tipizzato è `v.id("media")` non stringa libera.
+3. **Registra il blocco nel registry condiviso** così Convex può validarlo.
+4. **Implementa il componente di rendering** per il frontend pubblico. Riceve i dati tipati, ritorna JSX. Responsive. Accessibile.
+5. **Implementa il componente di editing** per l'admin. Form fields per ogni campo dello schema. Integrato con media picker se necessario.
+6. **Aggiungi metadata per il block picker**: label visibile ("Galleria Immagini"), icona, categoria ("media" vs "layout" vs "form"), descrizione breve.
+7. **Testa il round-trip**: crea un'istanza del blocco dall'admin, pubblica, verifica che appaia correttamente sul sito pubblico.
+
+Nessuna di queste operazioni dovrebbe richiedere toccare il `<BlockRenderer>` generico, il middleware, o le mutation generiche di save/publish. Quelli sono agnostici rispetto al tipo specifico.
+
+## Il BlockRenderer
+
+Sul frontend pubblico esiste un singolo componente `<BlockRenderer>` (o `<BlockList>`) che riceve l'array di blocchi e fa:
+
+Per ogni blocco nell'array, in ordine:
+- Leggi il campo `type`.
+- Cerca il componente corrispondente nel registry di rendering.
+- Se trovato, renderizzalo passando i dati del blocco.
+- Se non trovato (tipo sconosciuto, magari rimosso o rinominato), renderizza un placeholder silenzioso in produzione, un warning visibile in development.
+
+Il renderer NON fa logica di business specifica di un tipo. Se il blocco "contactForm" deve fare qualcosa di particolare, quella logica sta nel componente `<ContactFormBlock>`, non nel renderer generico.
+
+## Validation al save
+
+Quando l'Admin Panel chiama una mutation Convex come `updatePageDraft({ pageId, blocks })`, la mutation DEVE validare ogni blocco dell'array contro il suo schema registrato prima di salvarlo. Questo impedisce:
+
+- Blocchi con campi obbligatori mancanti.
+- Campi di tipo sbagliato (numero dove ci vuole stringa).
+- Campi sconosciuti (typo nei nomi, o payload malicioso).
+- Type value non presenti nel registry.
+
+Il check più rigoroso è: per ogni blocco, trova lo schema del suo type nel registry, e fallo parsare. Se parsing fallisce, rigetta l'intera mutation con un errore chiaro che indica quale blocco e quale campo.
+
+Il check più permissivo (sconsigliato ma a volte inevitabile durante migrations) è accettare blocchi di tipo sconosciuto e loggarli — ma questo deve essere una scelta consapevole, non il default.
+
+## Campi ricorrenti e componenti field riutilizzabili
+
+Molti blocchi avranno campi simili: titolo, sottotitolo, immagine, CTA (label + link), descrizione rich text. Non reimplementare da zero l'editor per ognuno di questi in ogni componente di editing.
+
+Crea una libreria di **field components** riutilizzabili nell'admin: `<TextField>`, `<RichTextField>`, `<ImageField>` (che apre il media picker), `<LinkField>` (che gestisce URL + label + target), `<ColorField>`, `<SelectField>`, `<RepeaterField>` (per array di items come testimonials). Ogni componente di editing di un blocco è una composizione di questi field components.
+
+Quando aggiungi un nuovo blocco, l'editing component dovrebbe richiedere una manciata di righe di composizione di field pre-esistenti. Se stai reinventando un date picker per il decimo blocco, il pattern è rotto.
+
+## Blocchi con children / repeater
+
+Alcuni blocchi hanno array interni: "testimonials" ha un array di testimonial, "FAQ" ha un array di {domanda, risposta}, "grid corsi" ha un array di course card.
+
+Questi NON sono blocchi annidati nel senso stretto (un blocco dentro un blocco). Sono campi di tipo array dello schema del blocco stesso. L'editor li gestisce con un `<RepeaterField>` che permette di aggiungere/rimuovere/riordinare elementi.
+
+Blocchi veramente annidati (un blocco container che contiene altri blocchi qualsiasi) sono possibili ma introducono complessità significativa (validation ricorsiva, rendering ricorsivo, editor drag-and-drop nidificato). Evitali finché non sono strettamente necessari per il caso d'uso. Il 95% dei CMS funziona benissimo con array flat di blocchi + repeater per items interni.
+
+## Versioning dello schema di un blocco
+
+Prima o poi capita: hai un blocco "hero" in produzione con 50 istanze, e decidi che ci vuole un nuovo campo obbligatorio `ctaVariant`. Opzioni:
+
+- **Nuovo campo opzionale** (consigliato). Aggiungi `ctaVariant` come opzionale con default nel componente di rendering. Zero migrazioni necessarie. Gradualmente gli editor lo popolano sulle pagine esistenti.
+- **Nuovo tipo di blocco** (`hero2` o `heroV2`). Usa quando il cambio è tanto grosso che coesisterlo con il vecchio è impraticabile. Mantieni il vecchio come deprecated nel registry finché tutte le istanze non sono migrate.
+- **Migration script**. Una one-time action Convex che scorre tutti i documenti e aggiorna i dati. Usa con cautela: esegui in staging prima, tieni backup.
+
+**Non rinominare mai il `type` di un blocco esistente.** Cambi stringa = tutti i blocchi di quel tipo diventano "tipo sconosciuto" di colpo. Aggiungi un alias nel registry se proprio serve rinominare.
+
+## Cosa NON fare
+
+**Non mettere logica di fetching dati dentro un componente di rendering di blocco** a meno che sia specifico del blocco e non si possa fare altrimenti. Il pattern ideale: la page server component fa UNA query per ottenere la pagina completa, e passa i dati ai blocchi. Se un blocco "lista corsi" ha bisogno di dati live, è accettabile che faccia una sua query separata, ma la maggior parte dei blocchi riceve dati statici dai suoi campi.
+
+**Non permettere HTML arbitrario come campo.** Se un blocco ha un campo "codice HTML custom" editabile dall'admin, hai aperto un XSS in tutte le pagine del sito. Rich text va bene ma deve uscire da un editor che produce markup strutturato e sanitizzato (Tiptap, Lexical, Slate) — non `dangerouslySetInnerHTML` su input utente raw.
+
+**Non rendere i blocchi "troppo configurabili".** Se un blocco hero ha 40 opzioni di styling (bordi, ombre, spacing, allineamenti), hai ricreato CSS nel CMS. Meglio 3-4 varianti predefinite (`layout: "centered" | "left" | "split"`) che un editor non-tecnico può scegliere. I designer vogliono che il sito sia coerente, non che ogni editor inventi il proprio stile.
+
+**Non usare il blocco come catch-all "generic content".** Se ti trovi con un blocco "genericSection" con un campo "content: any", torna indietro e crea tipi specifici. La tipizzazione forte è il principale beneficio del sistema.

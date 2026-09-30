@@ -1,0 +1,67 @@
+---
+description: Performance standards per chiamate Supabase e data fetching in Foodli
+globs: "**/*.ts,**/*.tsx"
+alwaysApply: false
+---
+
+# Supabase & Data Fetching Performance Standards
+
+## Divieto pattern N+1 su write path
+
+MAI usare `for + await` per operazioni batch su tabelle correlate.
+
+```typescript
+// VIETATO
+for (const item of items) {
+  await api.addDishIngredient(item);
+}
+
+// CORRETTO — batch in 1 roundtrip
+await api.replaceDishIngredients(dishId, items);
+
+// IDEALE — RPC transazionale (1 sola chiamata DB)
+await api.updateDishFull({ dishId, ingredients, priceVariants, ... });
+```
+
+## Scritture multi-tabella: sempre transazione DB
+
+Quando il salvataggio tocca 2+ tabelle correlate (es. dish + ingredients + variants), usare una RPC PostgreSQL che esegue tutto in una singola transazione. Il client non deve orchestrare la coerenza.
+
+## Letture: parallelizzare dove non c'è dipendenza
+
+```typescript
+// VIETATO — sequenziale senza motivo
+const variants = await api.getDishPriceVariants(id);
+const ingredients = await api.getDishIngredients(id);
+
+// CORRETTO
+const [variants, ingredients] = await Promise.all([
+  api.getDishPriceVariants(id),
+  api.getDishIngredients(id),
+]);
+```
+
+## Calcoli derivabili: mai rileggere dal DB
+
+Se i dati sono già in memoria (es. ingredienti nel form state), calcolare allergeni/tag localmente con `computeAllergensAndTags()` invece di fare una nuova SELECT.
+
+## Ricerca: debounce >= 600ms + AbortController
+
+- Debounce minimo 600ms per ricerche su tabelle grandi
+- Usare `AbortController` per cancellare richieste superate
+- Deduplica: skip se il termine trimmed è identico al precedente
+
+## Invalidazione cache: precisione chirurgica
+
+```typescript
+// VIETATO — invalida tutto
+queryClient.invalidateQueries({ queryKey: ['dishes'] });
+
+// CORRETTO — solo le chiavi toccate
+queryClient.invalidateQueries({ queryKey: queryKeys.dishes.detail(dishId) });
+queryClient.invalidateQueries({ queryKey: queryKeys.dishes.ingredients(dishId) });
+```
+
+## Obbligo benchmark pre/post per refactor performance
+
+Ogni PR che tocca data fetching deve includere conteggio chiamate e tempi prima/dopo. Formato: vedi `docs/audit-dishes-edit-performance.md`.
