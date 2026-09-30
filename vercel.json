@@ -1,0 +1,4 @@
+{
+  "framework": "nextjs",
+  "ignoreCommand": "sh scripts/vercel-ignore-build-step.sh"
+}
