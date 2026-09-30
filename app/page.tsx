@@ -127,7 +127,7 @@ export default function HomePage() {
             Articoli, podcast e racconti per avvicinare la psicologia alla vita quotidiana. Uno spazio speciale è
             dedicato alle parole degli adolescenti.
           </p>
-          <Link href="/blog" className="button-outline mt-8">
+          <Link href="/blog" className="button-primary mt-8">
             Leggi gli articoli <ArrowUpRight size={17} />
           </Link>
         </div>

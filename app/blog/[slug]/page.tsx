@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContactBand, PageIntro } from "@/components/site-chrome";
 import { PostBody, PostImage } from "@/components/post-body";
+import { accentTitle } from "@/lib/accent-title";
 import { sanityFetch } from "@/sanity/live";
 import { POST_QUERY } from "@/sanity/queries";
 
@@ -17,33 +18,6 @@ function formatDate(value: string | null) {
     month: "long",
     year: "numeric",
   }).format(new Date(value));
-}
-
-function accentTitle(title: string) {
-  const quoted = title.match(/^(.*?)\s*([“"][^”"]+[”"])\s*$/);
-  const words = title.trim().split(/\s+/);
-  const accentCount = words.length <= 3 ? 1 : words.length <= 5 ? 2 : 3;
-  const splitAt = Math.max(1, words.length - accentCount);
-  const lead = (quoted ? quoted[1] : words.slice(0, splitAt).join(" ")).trim();
-  const accent = quoted ? quoted[2] : words.slice(splitAt).join(" ");
-
-  if (!lead) {
-    return (
-      <span className="title-rule">
-        <em>{accent}</em>
-      </span>
-    );
-  }
-
-  return (
-    <>
-      {lead}
-      <br />
-      <span className="title-rule">
-        <em>{accent}</em>
-      </span>
-    </>
-  );
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

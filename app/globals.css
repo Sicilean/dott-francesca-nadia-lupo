@@ -153,6 +153,14 @@
     }
   }
 }
+.button-primary.header-cta {
+  background: var(--color-accent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .button-primary.header-cta:hover {
+    background: var(--color-primary);
+  }
+}
 @utility button-outline {
   display: inline-flex;
   align-items: center;
@@ -202,7 +210,8 @@
 .button-primary svg,
 .button-outline svg,
 .button-light svg,
-.home-area svg {
+.home-area svg,
+.contact-arrow {
   flex-shrink: 0;
   transform: rotate(45deg);
   transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
@@ -212,7 +221,8 @@
   .button-primary:hover svg,
   .button-outline:hover svg,
   .button-light:hover svg,
-  .home-area:hover svg {
+  .home-area:hover svg,
+  .contact-sede:hover .contact-arrow {
     transform: rotate(0deg);
   }
 }
@@ -220,7 +230,9 @@
 .button-primary:focus-visible svg,
 .button-outline:focus-visible svg,
 .button-light:focus-visible svg,
-.home-area:focus-visible svg {
+.home-area:focus-visible svg,
+.area-card a:focus-visible .text-link svg,
+.contact-sede:focus-visible .contact-arrow {
   transform: rotate(0deg);
 }
 
@@ -481,12 +493,14 @@ em {
 }
 .title-rule {
   position: relative;
+  z-index: 0;
   display: inline-block;
   padding-bottom: 0.08em;
 }
 .title-rule::after {
   content: "";
   position: absolute;
+  z-index: -1;
   left: 1em;
   right: -0.1em;
   top: 85%;
@@ -502,7 +516,11 @@ em {
   background: var(--secondary);
 }
 .portrait-home {
+  --shadow-x: 0.75rem;
+  --shadow-y: 1.15rem;
+  margin-left: var(--shadow-x);
   background: linear-gradient(to right, #f6f6f6 50%, #ebebeb 50%);
+  box-shadow: calc(var(--shadow-x) * -1) var(--shadow-y) 0 0 var(--accent);
 }
 .portrait-home-img {
   position: absolute;
@@ -514,8 +532,12 @@ em {
   transform: translate(-50%, -50%);
 }
 .portrait-photo {
+  --shadow-x: 0.75rem;
+  --shadow-y: 1.15rem;
   min-height: 22rem;
   aspect-ratio: 2 / 3;
+  margin-left: var(--shadow-x);
+  box-shadow: calc(var(--shadow-x) * -1) var(--shadow-y) 0 0 var(--accent);
 }
 .home-areas {
   display: grid;
@@ -548,7 +570,7 @@ em {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.45rem;
-  font-family: var(--font-h1), serif;
+  font-family: var(--font-body);
   font-size: clamp(1.7rem, 3.8vw, 2.7rem);
   line-height: 1.1;
   color: var(--primary);
@@ -646,21 +668,75 @@ em {
 .areas-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.25rem;
+  gap: 3rem;
 }
 .area-card {
-  grid-column: auto;
-  min-height: 200px;
-  border: 1px solid var(--border);
-  background: var(--background);
-  padding: 1.4rem;
+  min-width: 0;
+}
+.area-card > a {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.area-card > a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 6px;
+}
+.area-card-art {
+  --shadow-x: 0.75rem;
+  --shadow-y: 1.15rem;
+  --area-frame: #8380ae;
+  position: relative;
+  aspect-ratio: 3 / 2;
+}
+.area-card:nth-child(5n + 1) .area-card-art {
+  --area-frame: #8380ae;
+}
+.area-card:nth-child(5n + 2) .area-card-art {
+  --area-frame: #79c8e6;
+}
+.area-card:nth-child(5n + 3) .area-card-art {
+  --area-frame: #e899b8;
+}
+.area-card:nth-child(5n + 4) .area-card-art {
+  --area-frame: #fde57b;
+}
+.area-card:nth-child(5n + 5) .area-card-art {
+  --area-frame: #79c8e6;
+}
+.area-card-art img {
+  display: block;
+  width: calc(100% - var(--shadow-x));
+  height: 100%;
+  margin-left: var(--shadow-x);
+  object-fit: cover;
+  object-position: center;
+  box-shadow: calc(var(--shadow-x) * -1) var(--shadow-y) 0 0 var(--area-frame);
+}
+.area-card-copy {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
 }
 .area-card h2 {
-  margin-top: 1.2rem;
   font: 400 clamp(1.7rem, 3vw, 2.5rem) / 1.05 var(--font-h1), serif;
+  transition: color 0.25s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .area-card:hover h2 {
+    color: var(--accent);
+    font-style: italic;
+  }
+  .area-card:hover .text-link svg {
+    transform: rotate(0deg);
+  }
+}
+.area-card .eyebrow + h2 {
+  margin-top: 1.25rem;
 }
 .area-card p {
   margin-top: 1rem;
@@ -668,8 +744,7 @@ em {
   line-height: 1.65;
 }
 .area-card .text-link {
-  margin-top: auto;
-  padding-top: 1.2rem;
+  margin-top: 1.2rem;
 }
 .post-row {
   display: grid;
@@ -693,10 +768,30 @@ em {
   gap: 1rem;
   align-items: flex-start;
 }
-.contact-detail svg {
+.contact-detail:has(> a) {
+  align-items: center;
+}
+.contact-sede {
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+.contact-sede:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 4px;
+}
+.contact-detail svg:not(.contact-arrow) {
   width: 20px;
+  height: 20px;
   flex: none;
   color: var(--accent-soft);
+}
+.contact-arrow {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
 }
 .contact-form {
   display: flex;
@@ -788,9 +883,8 @@ h2 {
   .portrait-photo {
     min-height: 32rem;
   }
-  .area-card {
-    padding: 2rem;
-    min-height: 240px;
+  .areas-grid {
+    gap: 4rem;
   }
   .footer-logo {
     height: 64px;
@@ -809,18 +903,21 @@ h2 {
     min-height: 40rem;
   }
   .areas-grid {
-    grid-template-columns: repeat(12, 1fr);
+    gap: 5.5rem;
   }
-  .area-card {
-    grid-column: span 6;
+  .area-card > a {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 3.5rem;
   }
-  .area-card-1,
-  .area-card-4 {
-    grid-column: span 7;
+  .area-card-art,
+  .portrait-home,
+  .portrait-photo {
+    --shadow-x: 1rem;
+    --shadow-y: 1.35rem;
   }
-  .area-card-2,
-  .area-card-5 {
-    grid-column: span 5;
+  .area-card:nth-child(even) .area-card-art {
+    order: 2;
   }
   .brand-mark {
     flex: none;

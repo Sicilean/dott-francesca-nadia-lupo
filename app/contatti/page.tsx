@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { ArrowUpRight, Facebook, Mail, MapPin, Phone } from "lucide-react";
 import { ContactForm } from "@/components/contact-form";
 import { PageIntro } from "@/components/site-chrome";
 
@@ -7,6 +7,21 @@ export const metadata: Metadata = {
   title: "Contatti e studi a Milano",
   description: "Contatta la Dott.ssa Francesca Nadia Lupo. Studi a Milano e Opera (MI), telefono 346 0808707.",
 };
+
+const sedi = [
+  {
+    lines: ["Via Bartolomeo D’Alviano, 13", "20146 Milano"],
+    maps: "https://www.google.com/maps/search/?api=1&query=Via+Bartolomeo+D%27Alviano+13,+20146+Milano",
+  },
+  {
+    lines: ["Via Dandolo, 1", "20073 Opera (MI)"],
+    maps: "https://www.google.com/maps/search/?api=1&query=Via+Dandolo+1,+20073+Opera",
+  },
+  {
+    lines: ["Via Santa Maria Valle, 4", "20123 Milano"],
+    maps: "https://www.google.com/maps/search/?api=1&query=Via+Santa+Maria+Valle+4,+20123+Milano",
+  },
+] as const;
 
 export default function ContattiPage() {
   return (
@@ -18,37 +33,45 @@ export default function ContattiPage() {
         <div className="bg-primary p-6 text-primary-foreground sm:p-8 md:p-12">
           <p className="eyebrow text-accent-soft">Le sedi</p>
           <div className="mt-8 space-y-7">
+            {sedi.map((sede) => (
+              <a
+                key={sede.maps}
+                className="contact-detail contact-sede"
+                href={sede.maps}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MapPin aria-hidden />
+                <p>
+                  {sede.lines[0]}
+                  <br />
+                  {sede.lines[1]}
+                </p>
+                <ArrowUpRight className="contact-arrow" size={16} aria-hidden />
+                <span className="sr-only">Apre Google Maps</span>
+              </a>
+            ))}
             <div className="contact-detail">
-              <MapPin />
+              <MapPin aria-hidden />
               <p>
-                Via Bartolomeo D’Alviano, 13
+                Quarta sede
                 <br />
-                20146 Milano
+                Indirizzo in arrivo
               </p>
             </div>
             <div className="contact-detail">
-              <MapPin />
-              <p>
-                Via Dandolo, 1
-                <br />
-                20073 Opera (MI)
-              </p>
-            </div>
-            <div className="contact-detail">
-              <MapPin />
-              <p>
-                Via Santa Maria Valle, 4
-                <br />
-                20123 Milano
-              </p>
-            </div>
-            <div className="contact-detail">
-              <Phone />
+              <Phone aria-hidden />
               <a href="tel:+393460808707">346 0808707</a>
             </div>
             <div className="contact-detail">
-              <Mail />
-              <span>Email disponibile su richiesta</span>
+              <Mail aria-hidden />
+              <a href="mailto:francescanadialupo@yahoo.it">francescanadialupo@yahoo.it</a>
+            </div>
+            <div className="contact-detail">
+              <Facebook aria-hidden />
+              <a href="https://www.facebook.com/dallacuraalprendersicura" target="_blank" rel="noopener noreferrer">
+                Facebook
+              </a>
             </div>
           </div>
         </div>

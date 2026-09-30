@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { ContactBand, PageIntro } from "@/components/site-chrome";
+import { getPercorsi } from "@/lib/percorsi";
 
 export const metadata: Metadata = {
   title: "Percorsi e aree di intervento",
@@ -9,16 +10,9 @@ export const metadata: Metadata = {
     "Psicoterapia individuale e di coppia, sessuologia clinica, psico-cardiologia, psico-oncologia e terapia di gruppo a Milano.",
 };
 
-const areas = [
-  ["Psicoterapia individuale", "Uno spazio personale per attraversare difficoltà, cambiamenti e domande che chiedono ascolto."],
-  ["Psicoterapia di coppia", "Un percorso per comprendere le dinamiche della relazione e riaprire possibilità di dialogo."],
-  ["Sessuologia clinica", "Consulenza e terapia per vivere la dimensione affettiva e sessuale con maggiore consapevolezza."],
-  ["Psico-cardiologia", "Supporto psicologico per persone con patologie cardiovascolari e per i loro familiari."],
-  ["Psico-oncologia", "Accompagnamento nelle diverse fasi della malattia oncologica, per la persona e per chi le è vicino."],
-  ["Terapia di gruppo", "Il gruppo come luogo protetto di confronto, riconoscimento e trasformazione condivisa."],
-] as const;
-
 export default function PercorsiPage() {
+  const areas = getPercorsi();
+
   return (
     <main>
       <PageIntro eyebrow="Percorsi" title={<>Ogni storia chiede<br /><span className="title-rule"><em>uno spazio diverso.</em></span></>}>
@@ -27,12 +21,20 @@ export default function PercorsiPage() {
       </PageIntro>
       <section className="site-wrap py-14 lg:py-24">
         <div className="areas-grid">
-          {areas.map(([title, text], index) => (
-            <article key={title} className={`area-card area-card-${index + 1}`}>
-              <h2>{title}</h2>
-              <p>{text}</p>
-              <Link href="/contatti" className="text-link">
-                Parliamone <ArrowUpRight size={16} />
+          {areas.map((area) => (
+            <article key={area.slug} className="area-card">
+              <Link href={`/percorsi/${area.slug}`} aria-labelledby={`percorso-${area.slug}`}>
+                <div className="area-card-art" aria-hidden>
+                  <img src={area.image} alt="" />
+                </div>
+                <div className="area-card-copy">
+                  {area.featured ? <p className="eyebrow">In evidenza</p> : null}
+                  <h2 id={`percorso-${area.slug}`}>{area.title}</h2>
+                  <p>{area.excerpt}</p>
+                  <span className="text-link">
+                    Parliamone <ArrowUpRight size={16} />
+                  </span>
+                </div>
               </Link>
             </article>
           ))}

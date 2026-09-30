@@ -78,7 +78,7 @@ export function SiteHeader() {
               </Link>
             ))}
           </nav>
-          <Link href="/contatti" className="button-primary hidden lg:inline-flex">
+          <Link href="/contatti" className="button-primary header-cta hidden lg:inline-flex">
             Prendi contatto <ArrowUpRight size={17} />
           </Link>
           <button

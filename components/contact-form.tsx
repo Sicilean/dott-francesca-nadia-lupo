@@ -12,6 +12,7 @@ export function ContactForm() {
 
   return (
     <form className="contact-form" onSubmit={submit}>
+      <p className="eyebrow">Per maggiori informazioni</p>
       <div>
         <label htmlFor="name">Nome e cognome</label>
         <input
