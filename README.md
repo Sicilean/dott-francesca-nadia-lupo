@@ -18,11 +18,18 @@ Repository: [Sicilean/dott-francesca-nadia-lupo](https://github.com/Sicilean/dot
 | `/` | `app/page.tsx` |
 | `/chi-sono` | `app/chi-sono/page.tsx` |
 | `/percorsi` | `app/percorsi/page.tsx` |
+| `/percorsi/[slug]` | `app/percorsi/[slug]/page.tsx` |
 | `/contatti` | `app/contatti/page.tsx` |
 | `/blog` | `app/blog/page.tsx` |
 | `/blog/[slug]` | `app/blog/[slug]/page.tsx` |
 
-Le query GROQ stanno in `sanity/queries.ts`. Il client pubblico è in `sanity/client.ts` e usa la CDN Sanity. `sanity/live.ts` attiva l'anteprima live solo se è presente `SANITY_API_READ_TOKEN`.
+Le query GROQ del blog stanno in `sanity/queries.ts`. Il client pubblico è in `sanity/client.ts` e usa la CDN Sanity. `sanity/live.ts` attiva l'anteprima live solo se è presente `SANITY_API_READ_TOKEN`.
+
+I sei percorsi (terapia di gruppo, psicoterapia individuale, psicoterapia di coppia, sessuologia clinica, psico-cardiologia, psico-oncologia) non sono documenti Sanity. Testo, slug e immagine stanno in `lib/percorsi.ts`. La griglia `/percorsi` e la pagina di dettaglio leggono da lì. `generateStaticParams` pregenera gli slug conosciuti; uno slug assente risponde 404. Il corpo (paragrafo, titolo, elenco, citazione) è reso da `components/percorso-body.tsx`. Le immagini referenziate stanno in `public/`.
+
+`lib/accent-title.tsx` spezza un titolo in parte principale e accento tipografico. Lo usano la pagina articolo e la pagina percorso.
+
+`/contatti` elenca tre sedi con link a Google Maps (Via Bartolomeo D’Alviano 13, Via Dandolo 1, Via Santa Maria Valle 4), una quarta sede ancora senza indirizzo, il telefono `346 0808707`, l’email `francescanadialupo@yahoo.it` e la pagina Facebook.
 
 ## Sviluppo locale
 

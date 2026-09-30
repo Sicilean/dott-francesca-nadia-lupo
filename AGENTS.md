@@ -2,7 +2,7 @@
 
 Sito Next.js. Sviluppo locale con `npm run dev`.
 
-Contenuti da Sanity (`sanity/`). Lo studio è in `studio/` (`npm run studio`) e non fa parte del build Vercel.
+Il blog arriva da Sanity (`sanity/`). Lo studio è in `studio/` (`npm run studio`) e non fa parte del build Vercel. I percorsi (`/percorsi` e `/percorsi/[slug]`) sono dati in `lib/percorsi.ts`, non documenti Sanity.
 
 ## Commit e deploy
 
