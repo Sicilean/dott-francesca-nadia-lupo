@@ -1,9 +1,14 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 
 export function ContactForm() {
   const [sent, setSent] = useState(false);
+  const formId = useId();
+  const nameId = `${formId}-name`;
+  const emailId = `${formId}-email`;
+  const phoneId = `${formId}-phone`;
+  const messageId = `${formId}-message`;
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -14,9 +19,9 @@ export function ContactForm() {
     <form className="contact-form" onSubmit={submit}>
       <p className="eyebrow">Per maggiori informazioni</p>
       <div>
-        <label htmlFor="name">Nome e cognome</label>
+        <label htmlFor={nameId}>Nome e cognome</label>
         <input
-          id="name"
+          id={nameId}
           name="name"
           autoComplete="name"
           autoCapitalize="words"
@@ -25,19 +30,34 @@ export function ContactForm() {
         />
       </div>
       <div>
-        <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="email" inputMode="email" required placeholder="La tua email" />
+        <label htmlFor={emailId}>Email</label>
+        <input
+          id={emailId}
+          name="email"
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          required
+          placeholder="La tua email"
+        />
       </div>
       <div>
-        <label htmlFor="phone">
+        <label htmlFor={phoneId}>
           Telefono <span>(facoltativo)</span>
         </label>
-        <input id="phone" name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="Il tuo numero" />
+        <input
+          id={phoneId}
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          inputMode="tel"
+          placeholder="Il tuo numero"
+        />
       </div>
       <div>
-        <label htmlFor="message">Messaggio</label>
+        <label htmlFor={messageId}>Messaggio</label>
         <textarea
-          id="message"
+          id={messageId}
           name="message"
           required
           rows={5}

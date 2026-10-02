@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
+import { ContactModalProvider } from "@/components/contact-modal";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { TextMotion } from "@/components/text-motion";
 import { SanityLive } from "@/sanity/live";
 import "./globals.css";
 
@@ -39,13 +41,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="it" className={`${inter.variable} ${fraunces.variable}`}>
       <body>
-        <a href="#contenuto" className="skip-link">
-          Salta al contenuto
-        </a>
-        <SiteHeader />
-        <div id="contenuto">{children}</div>
-        <SiteFooter />
-        <SanityLive />
+        <ContactModalProvider>
+          <a href="#contenuto" className="skip-link">
+            Salta al contenuto
+          </a>
+          <SiteHeader />
+          <div id="contenuto">{children}</div>
+          <TextMotion />
+          <SiteFooter />
+          <SanityLive />
+        </ContactModalProvider>
       </body>
     </html>
   );

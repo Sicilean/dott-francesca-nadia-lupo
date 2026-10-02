@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowDown, ArrowUpRight } from "lucide-react";
+import { ContactCta } from "@/components/contact-modal";
 import { ContactBand } from "@/components/site-chrome";
 
 export const metadata: Metadata = {
@@ -37,9 +38,9 @@ export default function HomePage() {
               Uno spazio di ascolto e cura in cui emozioni, relazioni e cambiamenti possono trovare parole nuove.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
-              <Link href="/contatti" className="button-primary">
+              <ContactCta className="button-primary">
                 Richiedi un colloquio <ArrowUpRight size={18} />
-              </Link>
+              </ContactCta>
               <Link href="/percorsi" className="button-outline">
                 Scopri i percorsi
               </Link>

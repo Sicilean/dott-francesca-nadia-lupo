@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { ContactCta } from "@/components/contact-modal";
+import { contactPhone, contactPhoneHref, sedi } from "@/lib/contact";
 
 const nav = [
   ["/", "Home"],
   ["/chi-sono", "Chi sono"],
   ["/percorsi", "Percorsi"],
   ["/blog", "Orizzonti"],
-  ["/contatti", "Contatti"],
 ] as const;
 
 export function SiteHeader() {
@@ -33,7 +34,9 @@ export function SiteHeader() {
 
     function focusables() {
       return Array.from(
-        document.querySelectorAll<HTMLElement>(".site-header a, .site-header button, #menu-mobile a"),
+        document.querySelectorAll<HTMLElement>(
+          ".site-header a, .site-header button, #menu-mobile a, #menu-mobile button",
+        ),
       ).filter((el) => !el.hasAttribute("disabled"));
     }
     function onKey(event: KeyboardEvent) {
@@ -78,9 +81,9 @@ export function SiteHeader() {
               </Link>
             ))}
           </nav>
-          <Link href="/contatti" className="button-primary header-cta hidden lg:inline-flex">
+          <ContactCta className="button-primary header-cta hidden lg:inline-flex">
             Prendi contatto <ArrowUpRight size={17} />
-          </Link>
+          </ContactCta>
           <button
             className="icon-button lg:hidden"
             onClick={() => setOpen(!open)}
@@ -121,9 +124,9 @@ export function SiteHeader() {
               <p className="font-fraunces text-xl leading-snug sm:text-2xl">
                 Ogni percorso comincia da una conversazione.
               </p>
-              <Link href="/contatti" className="button-primary" onClick={() => setOpen(false)}>
+              <ContactCta className="button-primary" onClick={() => setOpen(false)}>
                 Prendi contatto <ArrowUpRight size={17} />
-              </Link>
+              </ContactCta>
             </div>
           </div>
         </nav>
@@ -135,8 +138,8 @@ export function SiteHeader() {
 export function SiteFooter() {
   return (
     <footer className="bg-surface-dark text-surface-dark-foreground">
-      <div className="site-wrap grid gap-10 pb-14 pt-20 lg:grid-cols-[1.4fr_1fr_1fr] lg:pb-14 lg:pt-24">
-        <div>
+      <div className="footer-grid site-wrap">
+        <div className="footer-brand">
           <img
             src="/logo_lupo.svg"
             alt="Francesca Nadia Lupo"
@@ -144,13 +147,16 @@ export function SiteFooter() {
             width={284}
             height={64}
           />
-          <p className="mt-3 max-w-sm text-sm leading-6 text-surface-dark-muted">
+          <p className="footer-bio">
             Psicologa, psicoterapeuta ad orientamento psicoanalitico, sessuologa clinica e terapeuta di coppia.
           </p>
+          <ContactCta className="button-primary header-cta">
+            Prendi contatto <ArrowUpRight size={17} />
+          </ContactCta>
         </div>
-        <div>
-          <p className="eyebrow text-accent-soft">Naviga</p>
-          <div className="mt-4 flex flex-col gap-2 text-sm">
+        <div className="footer-col">
+          <p className="eyebrow footer-label text-accent-soft">Naviga</p>
+          <div className="footer-links">
             {nav.slice(1).map(([href, label]) => (
               <Link key={href} href={href} className="footer-link">
                 {label}
@@ -158,15 +164,27 @@ export function SiteFooter() {
             ))}
           </div>
         </div>
-        <div>
-          <p className="eyebrow text-accent-soft">Studio</p>
-          <p className="mt-4 text-sm leading-7 text-surface-dark-muted">
-            Milano · Opera (MI)
-            <br />
-            <a href="tel:+393460808707" className="footer-link">
-              346 0808707
+        <div className="footer-col">
+          <p className="eyebrow footer-label text-accent-soft">Studio</p>
+          <div className="footer-links">
+            {sedi.map((sede) => (
+              <a
+                key={sede.maps}
+                href={sede.maps}
+                className="footer-link footer-sede"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {sede.lines[0]}
+                <br />
+                {sede.lines[1]}
+                <span className="sr-only">Apre Google Maps</span>
+              </a>
+            ))}
+            <a href={contactPhoneHref} className="footer-link footer-phone">
+              {contactPhone}
             </a>
-          </p>
+          </div>
         </div>
       </div>
       <div className="site-wrap flex flex-col gap-2 border-t border-surface-dark-line py-5 text-xs text-surface-dark-muted sm:flex-row sm:justify-between">
@@ -213,9 +231,9 @@ export function ContactBand() {
             Ogni percorso comincia da una conversazione.
           </h2>
         </div>
-        <Link href="/contatti" className="button-light">
+        <ContactCta className="button-light">
           Scrivi a Francesca <ArrowUpRight size={18} />
-        </Link>
+        </ContactCta>
       </div>
       <div className="band-rule" aria-hidden>
         <img src="/linea_lupo.svg" alt="" />
