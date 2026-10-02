@@ -81,6 +81,6 @@ La build parte solo se il messaggio del tip commit contiene il tag:
 [vercel deploy francescanadialupo-site]
 ```
 
-`scripts/vercel-ignore-build-step.sh` è l'Ignored Build Step (`vercel.json`). Senza il tag lo script esce con codice 0 e Vercel salta la build. Con il tag esce con codice 1 e la build prosegue. Prima di ogni commit va detto esplicitamente se questo tag va aggiunto.
+`scripts/vercel-ignore-build-step.sh` è l'Ignored Build Step (`vercel.json`). Senza il tag lo script esce con codice 0 e Vercel salta la build. Con il tag esce con codice 1 e la build prosegue. Lo script legge solo il messaggio del commit più recente: un tag in un commit precedente non conta. Prima di ogni commit va detto esplicitamente se questo tag va aggiunto.
 
 Il tag va nel body del tip, insieme a una modifica reale di file. Un commit vuoto con il solo tag non fa partire la build.
