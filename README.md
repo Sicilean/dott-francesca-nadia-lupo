@@ -15,12 +15,15 @@ Repository: [Sicilean/dott-francesca-nadia-lupo](https://github.com/Sicilean/dot
 
 | Percorso | File |
 | --- | --- |
-| `/` | `app/page.tsx` |
-| `/chi-sono` | `app/chi-sono/page.tsx` |
-| `/percorsi` | `app/percorsi/page.tsx` |
-| `/percorsi/[slug]` | `app/percorsi/[slug]/page.tsx` |
-| `/blog` | `app/blog/page.tsx` |
-| `/blog/[slug]` | `app/blog/[slug]/page.tsx` |
+| `/` | `app/(site)/page.tsx` |
+| `/chi-sono` | `app/(site)/chi-sono/page.tsx` |
+| `/percorsi` | `app/(site)/percorsi/page.tsx` |
+| `/percorsi/[slug]` | `app/(site)/percorsi/[slug]/page.tsx` |
+| `/blog` | `app/(site)/blog/page.tsx` |
+| `/blog/[slug]` | `app/(site)/blog/[slug]/page.tsx` |
+| `/in-aggiornamento` | `app/in-aggiornamento/page.tsx` |
+
+Il gruppo `(site)` non compare nell’URL. Header, footer e modale di contatto stanno in `components/site-frame.tsx`, montato da `app/(site)/layout.tsx`. La pagina di attesa è fuori da quel gruppo, quindi non ha navigazione. Uno slug sconosciuto passa da `app/(site)/[...slug]/page.tsx` e risponde 404 dentro il layout del sito.
 
 Le query GROQ del blog stanno in `sanity/queries.ts`. Il client pubblico è in `sanity/client.ts` e usa la CDN Sanity. `sanity/live.ts` attiva l'anteprima live solo se è presente `SANITY_API_READ_TOKEN`.
 
@@ -40,7 +43,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Il sito risponde su `http://localhost:3000`.
+Il sito risponde su `http://localhost:3000`. L’anteprima della pagina di attesa è `http://localhost:3000/in-aggiornamento`.
 
 Variabili in `.env.local` (mai committare questo file):
 
@@ -51,6 +54,14 @@ Variabili in `.env.local` (mai committare questo file):
 | `SANITY_API_READ_TOKEN` | Token viewer, solo server. Serve per bozze e live preview. |
 
 Senza le due variabili `NEXT_PUBLIC_*`, `sanity/env.ts` interrompe il build.
+
+## Pagina di attesa
+
+`middleware.ts` copre solo `francescanadialupo.it` e `www.francescanadialupo.it`. Su quei domini la home è la pagina «In aggiornamento» e ogni altro percorso torna lì. Non c’è menu.
+
+`localhost` e gli host `*.vercel.app` servono il sito completo. Il link del progetto Vercel è quello da passare alla cliente per rivedere gli aggiornamenti. Lo stesso deploy, aperto dal dominio pubblico, resta sulla pagina di attesa.
+
+`MAINTENANCE_MODE=false` disattiva la copertura anche sul dominio. Next legge la variabile durante la build: dopo il cambio serve un nuovo deploy. Per togliere la pagina del tutto, elimina `middleware.ts` e `app/in-aggiornamento/`.
 
 ## Sanity Studio
 

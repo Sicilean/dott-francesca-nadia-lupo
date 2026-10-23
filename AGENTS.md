@@ -4,6 +4,8 @@ Sito Next.js. Sviluppo locale con `npm run dev`.
 
 Il blog arriva da Sanity (`sanity/`). Lo studio è in `studio/` (`npm run studio`) e non fa parte del build Vercel. I percorsi (`/percorsi` e `/percorsi/[slug]`) sono dati in `lib/percorsi.ts`, non documenti Sanity.
 
+`middleware.ts` mostra «In aggiornamento» solo su `francescanadialupo.it` e `www.francescanadialupo.it`. Il link `*.vercel.app` e localhost mostrano il sito completo. L’anteprima della pagina di attesa è `/in-aggiornamento`. `MAINTENANCE_MODE=false` la disattiva al deploy successivo. Dettagli in `README.md`.
+
 ## Commit e deploy
 
 - Remote: `https://github.com/Sicilean/dott-francesca-nadia-lupo.git`, branch `main`.
