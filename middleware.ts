@@ -14,14 +14,13 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!isMaintenanceHost(request)) {
-    return NextResponse.next();
+    return noIndex(NextResponse.next());
   }
 
   if (pathname === "/") {
     const url = request.nextUrl.clone();
     url.pathname = HOLDING_PATH;
-    const response = NextResponse.rewrite(url);
-    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    const response = noIndex(NextResponse.rewrite(url));
     response.headers.set("Cache-Control", "no-store");
     response.headers.set("Retry-After", "86400");
     return response;
@@ -30,7 +29,12 @@ export function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   url.pathname = "/";
   url.search = "";
-  return NextResponse.redirect(url, 307);
+  return noIndex(NextResponse.redirect(url, 307));
+}
+
+function noIndex(response: NextResponse) {
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return response;
 }
 
 function isMaintenanceHost(request: NextRequest) {

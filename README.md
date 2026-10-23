@@ -59,9 +59,11 @@ Senza le due variabili `NEXT_PUBLIC_*`, `sanity/env.ts` interrompe il build.
 
 `middleware.ts` copre solo `francescanadialupo.it` e `www.francescanadialupo.it`. Su quei domini la home è la pagina «In aggiornamento» e ogni altro percorso torna lì. Non c’è menu.
 
-`localhost` e gli host `*.vercel.app` servono il sito completo. Il link del progetto Vercel è quello da passare alla cliente per rivedere gli aggiornamenti. Lo stesso deploy, aperto dal dominio pubblico, resta sulla pagina di attesa.
+`localhost` e gli host `*.vercel.app` servono il sito completo. Il link del progetto Vercel è quello da passare alla cliente per rivedere gli aggiornamenti. Lo stesso deploy, aperto dal dominio pubblico, resta sulla pagina di attesa. Il dominio va collegato a questo deploy: un deploy precedente, senza `middleware.ts`, mostra il sito completo.
 
 `MAINTENANCE_MODE=false` disattiva la copertura anche sul dominio. Next legge la variabile durante la build: dopo il cambio serve un nuovo deploy. Per togliere la pagina del tutto, elimina `middleware.ts` e `app/in-aggiornamento/`.
+
+Finché il sito è in lavorazione, ogni pagina — dominio pubblico e link Vercel — invia `noindex`. Il meta sta in `app/layout.tsx` e l’header `X-Robots-Tag` nel middleware. Va tolto quando il sito può essere indicizzato.
 
 ## Sanity Studio
 
