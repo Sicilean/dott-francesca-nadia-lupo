@@ -13,13 +13,15 @@ export type Percorso = {
   body: readonly PercorsoBlock[];
 };
 
+// Paesaggi e astratti da Pixabay, salvati in public/percorsi.
+// Id: 1547273, 5723734, 1790701, 4916174, 5243072, 9914605.
 export const percorsi = [
   {
     slug: "terapia-di-gruppo",
     title: "Terapia di gruppo",
     excerpt:
       "La metafora del branco di porcospini di Schopenhauer rappresenta bene la sfida della relazione umana: trovare la giusta distanza tra sé e gli altri per poter stare bene insieme. La terapia di gruppo offre un contesto psicologico e sociale unico per esplorare questa dinamica.",
-    image: "/pexels-tima-miroshnichenko-5711373.webp",
+    image: "/percorsi/terapia-di-gruppo.webp",
     featured: true,
     body: [
       {
@@ -46,7 +48,7 @@ export const percorsi = [
     title: "Psicoterapia individuale",
     excerpt:
       "Intraprendere un percorso di Psicoterapia Individuale può essere un’opportunità per esplorare i diversi aspetti del Sé e comprendere meglio le proprie emozioni, pensieri e comportamenti.",
-    image: "/pexels-shvets-production-7176317.webp",
+    image: "/percorsi/psicoterapia-individuale.webp",
     body: [
       {
         type: "quote",
@@ -72,7 +74,7 @@ export const percorsi = [
     title: "Psicoterapia di coppia",
     excerpt:
       "La vita di una coppia è caratterizzata da un percorso evolutivo non lineare, con momenti di stabilità e di turbolenza che si alternano nel tempo.",
-    image: "/pexels-shvets-production-7176134.webp",
+    image: "/percorsi/psicoterapia-di-coppia.webp",
     body: [
       {
         type: "quote",
@@ -107,7 +109,7 @@ export const percorsi = [
     title: "Sessuologia clinica",
     excerpt:
       "Il sessuologo è uno specialista che esplora vari aspetti della sessualità umana, offrendo supporto per superare ostacoli emotivi, psicologici e fisici legati alla sfera sessuale.",
-    image: "/disegno_sessuologia-clinica.svg",
+    image: "/percorsi/sessuologia-clinica.webp",
     body: [
       {
         type: "quote",
@@ -141,7 +143,7 @@ export const percorsi = [
     title: "Psico-cardiologia",
     excerpt:
       "La diagnosi di una malattia cardiovascolare può essere un evento traumatico che destabilizza il soggetto colpito e si ripercuote su tutti gli aspetti della sua vita, compresi i ruoli familiari, lavorativi, sociali e sessuali.",
-    image: "/pexels-silverkblack-23496572.webp",
+    image: "/percorsi/psico-cardiologia.webp",
     body: [
       {
         type: "quote",
@@ -167,7 +169,7 @@ export const percorsi = [
     title: "Psico-oncologia",
     excerpt:
       "La diagnosi di cancro può avere un impatto devastante sulla vita di una persona, influenzando non solo la salute fisica ma anche il benessere emotivo e psicologico. Il supporto psicologico può essere fondamentale per aiutare i pazienti e le loro famiglie a gestire le emozioni negative e a trovare strategie per affrontare la malattia.",
-    image: "/pexels-thirdman-7659554.webp",
+    image: "/percorsi/psico-oncologia.webp",
     body: [
       {
         type: "quote",

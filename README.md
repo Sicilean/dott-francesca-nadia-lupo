@@ -27,7 +27,7 @@ Il gruppo `(site)` non compare nell’URL. Header, footer e modale di contatto s
 
 Le query GROQ del blog stanno in `sanity/queries.ts`. Il client pubblico è in `sanity/client.ts` e usa la CDN Sanity. `sanity/live.ts` attiva l'anteprima live solo se è presente `SANITY_API_READ_TOKEN`.
 
-I sei percorsi (terapia di gruppo, psicoterapia individuale, psicoterapia di coppia, sessuologia clinica, psico-cardiologia, psico-oncologia) non sono documenti Sanity. Testo, slug e immagine stanno in `lib/percorsi.ts`. La griglia `/percorsi` e la pagina di dettaglio leggono da lì. `generateStaticParams` pregenera gli slug conosciuti; uno slug assente risponde 404. Il corpo (paragrafo, titolo, elenco, citazione) è reso da `components/percorso-body.tsx`. Le immagini referenziate stanno in `public/`.
+I sei percorsi (terapia di gruppo, psicoterapia individuale, psicoterapia di coppia, sessuologia clinica, psico-cardiologia, psico-oncologia) non sono documenti Sanity. Testo, slug e percorso dell’immagine stanno in `lib/percorsi.ts`. Le foto, paesaggi e astratti da Pixabay, stanno in `public/percorsi/` e sono usate sia dalla griglia `/percorsi` sia dalla pagina di dettaglio. `generateStaticParams` pregenera gli slug conosciuti; uno slug assente risponde 404. Il corpo (paragrafo, titolo, elenco, citazione) è reso da `components/percorso-body.tsx`.
 
 `lib/accent-title.tsx` spezza un titolo in parte principale e accento tipografico. Lo usano la pagina articolo e la pagina percorso.
 
