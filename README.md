@@ -31,7 +31,7 @@ I sei percorsi (terapia di gruppo, psicoterapia individuale, psicoterapia di cop
 
 `lib/accent-title.tsx` spezza un titolo in parte principale e accento tipografico. Lo usano la pagina articolo e la pagina percorso.
 
-Le sedi, il telefono e l’email stanno in `lib/contact.ts`. Il form si apre in una modale (`components/contact-modal.tsx`) dalle CTA, header e footer inclusi. Il footer elenca le tre sedi. `/contatti` reindirizza alla home.
+Le sedi, il telefono e l’email stanno in `lib/contact.ts`. Il form si apre in una modale (`components/contact-modal.tsx`) dalle CTA, header e footer inclusi. Il footer elenca le quattro sedi. `/contatti` reindirizza alla home.
 
 `components/text-motion.tsx` spezza i titoli grandi (hero, aperture di pagina, titoli di sezione) sulle righe già marcate da un a capo e le fa salire una alla volta, circa 1,15 secondi, con un breve ritardo tra le righe. La sottolineatura si disegna quando la riga è quasi arrivata. Sopratitoli e frasi brevi passano da una leggera sfocatura al fuoco. Con `prefers-reduced-motion: reduce` il testo resta fermo. I titoli delle schede in `/percorsi` non usano questa entrata, così lo spostamento a destra in hover resta indipendente.
 
