@@ -32,14 +32,6 @@ export function ContactPanel({ className }: ContactPanelProps) {
             </a>
           ))}
           <div className="contact-detail">
-            <MapPin aria-hidden />
-            <p>
-              Quarta sede
-              <br />
-              Indirizzo in arrivo
-            </p>
-          </div>
-          <div className="contact-detail">
             <Phone aria-hidden />
             <a href={contactPhoneHref}>{contactPhone}</a>
           </div>

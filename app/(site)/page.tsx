@@ -26,23 +26,22 @@ export default function HomePage() {
         </div>
         <div className="site-wrap relative z-10 grid items-start gap-10 py-12 lg:min-h-[720px] lg:grid-cols-[1.25fr_0.75fr] lg:items-end lg:pb-20 lg:pt-24">
           <div>
-            <p className="eyebrow">Psicologa · Psicoterapeuta · Milano</p>
             <h1 className="hero-title mt-5">
               Dare forma
               <br />
               <span className="title-rule">
-                a ciò che <em>senti.</em>
+                a ciò che <em>sente.</em>
               </span>
             </h1>
             <p className="mt-12 max-w-xl text-lg leading-8 text-muted-foreground">
-              Uno spazio di ascolto e cura in cui emozioni, relazioni e cambiamenti possono trovare parole nuove.
+              Uno spazio di ascolto e cura in cui emozioni, relazioni e cambiamenti possono trovare nuovi significati.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <ContactCta className="button-primary">
-                Richiedi un colloquio <ArrowUpRight size={18} />
+                Richiesta di un colloquio <ArrowUpRight size={18} />
               </ContactCta>
               <Link href="/percorsi" className="button-outline">
-                Scopri i percorsi
+                I percorsi
               </Link>
             </div>
           </div>
@@ -68,7 +67,7 @@ export default function HomePage() {
             sessuologia clinica e terapia di coppia.
           </p>
           <Link href="/chi-sono" className="text-link mt-8">
-            Conosci Francesca <ArrowUpRight size={16} />
+            Chi sono <ArrowUpRight size={16} />
           </Link>
         </div>
         <div className="portrait-slot portrait-home lg:order-first">
@@ -129,7 +128,7 @@ export default function HomePage() {
             dedicato alle parole degli adolescenti.
           </p>
           <Link href="/blog" className="button-primary mt-8">
-            Leggi gli articoli <ArrowUpRight size={17} />
+            Gli articoli <ArrowUpRight size={17} />
           </Link>
         </div>
       </section>

@@ -14,7 +14,7 @@ export type Percorso = {
 };
 
 // Paesaggi e astratti da Pixabay, salvati in public/percorsi.
-// Id: 1547273, 5723734, 1790701, 4916174, 5243072, 9914605.
+// Id: 8001786, 5038025, 3241227, 4916174, 5243072, 2391348.
 export const percorsi = [
   {
     slug: "terapia-di-gruppo",
@@ -39,7 +39,7 @@ export const percorsi = [
       },
       {
         type: "paragraph",
-        text: "Durante le sedute di gruppo, i partecipanti condividono le loro storie e le loro emozioni, creando uno spazio di accoglienza e di apprendimento emotivo. L’elaborazione verbale e il confronto con gli altri permettono di scoprire nuove prospettive e di accedere a nuove possibilità di essere. La terapia di gruppo offre un’opportunità unica per crescere e per scoprire nuove dimensioni di sé stessi, grazie alla condivisione e alla relazione con gli altri. Se stai cercando un percorso di crescita personale, la terapia di gruppo potrebbe essere un’opzione da considerare.",
+        text: "Durante le sedute di gruppo, i partecipanti condividono le loro storie e le loro emozioni, creando uno spazio di accoglienza e di apprendimento emotivo. L’elaborazione verbale e il confronto con gli altri permettono di scoprire nuove prospettive e di accedere a nuove possibilità di essere. La terapia di gruppo offre un’opportunità unica per crescere e per scoprire nuove dimensioni di sé stessi, grazie alla condivisione e alla relazione con gli altri. Se sta cercando un percorso di crescita personale, la terapia di gruppo potrebbe essere un’opzione da considerare.",
       },
     ],
   },

@@ -16,4 +16,8 @@ export const sedi = [
     lines: ["Via Santa Maria Valle, 4", "20123 Milano"],
     maps: "https://www.google.com/maps/search/?api=1&query=Via+Santa+Maria+Valle+4,+20123+Milano",
   },
+  {
+    lines: ["Vicolo Buffalari, 2", "29121 Piacenza"],
+    maps: "https://www.google.com/maps/search/?api=1&query=Vicolo+Buffalari+2,+29121+Piacenza",
+  },
 ] as const;

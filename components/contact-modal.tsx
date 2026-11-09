@@ -146,10 +146,10 @@ function ContactModal() {
         <header className="contact-modal-head">
           <div className="contact-modal-intro">
             <h2 id={titleId} className="contact-modal-title">
-              Richiedi un <em>colloquio.</em>
+              Richiesta di un <em>colloquio.</em>
             </h2>
             <p id={descriptionId} className="contact-modal-lead">
-              Puoi chiamare oppure lasciare un messaggio. Il modulo è una dimostrazione e non invia ancora i dati.
+              Può chiamare oppure lasciare un messaggio. Il modulo è una dimostrazione e non invia ancora i dati.
             </p>
           </div>
           <button type="button" className="contact-modal-close" onClick={close}>

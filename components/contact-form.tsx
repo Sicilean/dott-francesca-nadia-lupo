@@ -26,7 +26,7 @@ export function ContactForm() {
           autoComplete="name"
           autoCapitalize="words"
           required
-          placeholder="Come ti chiami?"
+          placeholder="Come si chiama?"
         />
       </div>
       <div>
@@ -38,7 +38,7 @@ export function ContactForm() {
           autoComplete="email"
           inputMode="email"
           required
-          placeholder="La tua email"
+          placeholder="La sua email"
         />
       </div>
       <div>
@@ -51,7 +51,7 @@ export function ContactForm() {
           type="tel"
           autoComplete="tel"
           inputMode="tel"
-          placeholder="Il tuo numero"
+          placeholder="Il suo numero"
         />
       </div>
       <div>
@@ -61,7 +61,7 @@ export function ContactForm() {
           name="message"
           required
           rows={5}
-          placeholder="Scrivi qui il motivo del contatto, senza inserire dati sanitari sensibili."
+          placeholder="Scriva qui il motivo del contatto, senza inserire dati sanitari sensibili."
         />
       </div>
       <label className="privacy-check">

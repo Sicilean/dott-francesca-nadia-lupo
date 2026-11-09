@@ -122,10 +122,10 @@ export function SiteHeader() {
             </div>
             <div className="mobile-menu-foot">
               <p className="font-fraunces text-xl leading-snug sm:text-2xl">
-                Ogni percorso comincia da una conversazione.
+                Ogni percorso comincia da un incontro.
               </p>
               <ContactCta className="button-primary" onClick={() => setOpen(false)}>
-                Prendi contatto <ArrowUpRight size={17} />
+                Contatti <ArrowUpRight size={17} />
               </ContactCta>
             </div>
           </div>
@@ -228,11 +228,11 @@ export function ContactBand() {
         <div>
           <p className="eyebrow text-accent-soft">Un primo passo</p>
           <h2 className="section-title mt-4 max-w-3xl">
-            Ogni percorso comincia da una conversazione.
+            Ogni percorso comincia da un incontro.
           </h2>
         </div>
         <ContactCta className="button-light">
-          Scrivi a Francesca <ArrowUpRight size={18} />
+          Contatti <ArrowUpRight size={18} />
         </ContactCta>
       </div>
       <div className="band-rule" aria-hidden>
