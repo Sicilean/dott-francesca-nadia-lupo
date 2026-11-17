@@ -9,8 +9,10 @@ import { ContactBand } from "@/components/site-chrome";
 export const metadata: Metadata = pageMetadata({
   title: "Psicologa e psicoterapeuta a Milano",
   description:
-    "Psicoterapia individuale e di coppia, sessuologia clinica, psico-cardiologia e psico-oncologia con la Dott.ssa Francesca Nadia Lupo a Milano.",
+    "Psicoterapia individuale e di coppia, sessuologia clinica, psico-cardiologia e psico-oncologia con la Dott.ssa Francesca Nadia Lupo.",
   path: "/",
+  // Anteprima dei link condivisi (social, chat). Il titolo per Google resta quello sopra.
+  socialTitle: "Dottoressa Francesca Nadia Lupo",
 });
 
 const areas = [

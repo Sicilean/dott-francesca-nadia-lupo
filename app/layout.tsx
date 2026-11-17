@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     template: "%s — Francesca Nadia Lupo",
   },
   description:
-    "Psicoterapia individuale e di coppia, sessuologia clinica, psico-cardiologia e psico-oncologia con la Dott.ssa Francesca Nadia Lupo a Milano.",
+    "Psicoterapia individuale e di coppia, sessuologia clinica, psico-cardiologia e psico-oncologia con la Dott.ssa Francesca Nadia Lupo.",
   authors: [{ name: "Dott.ssa Francesca Nadia Lupo" }],
   icons: { icon: "/favicon.png", apple: "/favicon.png" },
   verification: {

@@ -6,7 +6,7 @@ import { ContactBand, PageIntro } from "@/components/site-chrome";
 export const metadata: Metadata = pageMetadata({
   title: "Chi sono",
   description:
-    "Formazione, esperienza e approccio della Dott.ssa Francesca Nadia Lupo, psicologa e psicoterapeuta a Milano.",
+    "Formazione, esperienza e approccio della Dott.ssa Francesca Nadia Lupo, psicologa e psicoterapeuta.",
   path: "/chi-sono",
 });
 

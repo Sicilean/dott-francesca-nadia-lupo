@@ -4,7 +4,7 @@ import { ImageResponse } from "next/og";
 import { professional } from "@/lib/site";
 
 /** Anteprima social predefinita (1200×630): logo, qualifica, sedi e foto della dottoressa. */
-export const alt = "Dott.ssa Francesca Nadia Lupo, psicologa e psicoterapeuta a Milano";
+export const alt = "Dott.ssa Francesca Nadia Lupo, psicologa e psicoterapeuta";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

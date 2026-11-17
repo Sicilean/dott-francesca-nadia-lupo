@@ -6,7 +6,7 @@ const defaultImage = {
   url: "/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "Dott.ssa Francesca Nadia Lupo, psicologa e psicoterapeuta a Milano",
+  alt: "Dott.ssa Francesca Nadia Lupo, psicologa e psicoterapeuta",
 };
 
 type PageMetaInput = {

@@ -8,7 +8,7 @@ import { getPercorsi } from "@/lib/percorsi";
 export const metadata: Metadata = pageMetadata({
   title: "Percorsi e aree di intervento",
   description:
-    "Psicoterapia individuale e di coppia, sessuologia clinica, psico-cardiologia, psico-oncologia e terapia di gruppo a Milano.",
+    "Psicoterapia individuale e di coppia, sessuologia clinica, psico-cardiologia, psico-oncologia e terapia di gruppo.",
   path: "/percorsi",
 });
 
