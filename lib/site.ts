@@ -3,6 +3,9 @@
 export const siteUrl = "https://francescanadialupo.it";
 export const siteName = "Francesca Nadia Lupo";
 
+/** Contenitore Google Tag Manager con Google Analytics 4 (pubblico per natura). */
+export const gtmId = "GTM-5WL6HZJ3";
+
 export const professional = {
   name: "Francesca Nadia Lupo",
   honorific: "Dott.ssa",

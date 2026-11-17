@@ -69,6 +69,7 @@ Variabili opzionali (anche su Vercel):
 - `app/sitemap.ts` elenca pagine, percorsi e articoli Sanity. `app/robots.ts` ammette tutti i crawler, compresi quelli delle IA, e indica la sitemap.
 - `/llms.txt` e `/llms-full.txt` (`lib/llms.ts`) sono testi per le IA: profilo, percorsi, domande e risposte (`lib/faq.ts`), sedi e articoli. Riprendono solo contenuti già nel sito. Non sono collegati dalle pagine e inviano `X-Robots-Tag: noindex`, così non compaiono nei risultati di ricerca per le persone.
 - Vercel Web Analytics e Speed Insights sono montati in `app/layout.tsx`. Non usano cookie. Vanno attivati dalla dashboard Vercel del progetto.
+- Google Analytics 4 passa da Google Tag Manager (`GTM-5WL6HZJ3`, in `lib/site.ts`) con Consent Mode v2: `components/cookie-consent.tsx` carica il contenitore con i consensi negati e mostra il banner «Accetta / Rifiuta». La scelta resta in `localStorage` (`fnl-cookie-consent`); «Preferenze cookie» nel footer riapre il banner. Lo studio non carica GTM. Se cambiano i cookie o i fornitori, aggiorna `/cookie-policy` e `/privacy`.
 - IndexNow: la chiave è `public/caa131664ee801f75ae8a17c8a6d4fff.txt`. Dopo un deploy a sito pubblico, `npm run indexnow` invia tutti gli URL della sitemap; `npm run indexnow -- /blog/slug` invia solo quelli indicati.
 
 ## Indicizzazione

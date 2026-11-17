@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ContactModalProvider } from "@/components/contact-modal";
+import { CookieConsent } from "@/components/cookie-consent";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { TextMotion } from "@/components/text-motion";
 import { SanityLive } from "@/sanity/live";
@@ -20,6 +21,7 @@ export function SiteFrame({ children }: SiteFrameProps) {
       <TextMotion />
       <SiteFooter />
       <SanityLive />
+      <CookieConsent />
     </ContactModalProvider>
   );
 }

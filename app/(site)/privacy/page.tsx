@@ -43,8 +43,10 @@ export default function PrivacyPage() {
             erogare le pagine e a proteggere il sito da abusi. Non sono usati per identificare chi visita.
           </p>
           <p>
-            <strong>Statistiche di visita.</strong> Il sito raccoglie statistiche aggregate sulle pagine visitate in
-            forma anonima, senza cookie e senza profilazione. Non è possibile risalire alla singola persona.
+            <strong>Statistiche di visita.</strong> Il fornitore di hosting conta le visite in forma aggregata e
+            anonima, senza cookie. Solo se lei lo accetta dal banner, Google Analytics 4 raccoglie inoltre dati di
+            utilizzo del sito (pagine viste, durata, provenienza, tipo di dispositivo) tramite cookie, con le funzioni
+            pubblicitarie disattivate.
           </p>
           <p>
             <strong>Dati comunicati da lei.</strong> Il sito non ha moduli di contatto. Se scrive un’email o
@@ -61,8 +63,12 @@ export default function PrivacyPage() {
               esplicito (art. 9.2.a GDPR).
             </li>
             <li>
-              Garantire il funzionamento e la sicurezza del sito e produrre statistiche anonime: legittimo interesse
-              del titolare (art. 6.1.f GDPR).
+              Garantire il funzionamento e la sicurezza del sito e produrre statistiche anonime senza cookie:
+              legittimo interesse del titolare (art. 6.1.f GDPR).
+            </li>
+            <li>
+              Statistiche di Google Analytics: il suo consenso (art. 6.1.a GDPR), che può revocare in qualsiasi
+              momento da «Preferenze cookie» in fondo alla pagina.
             </li>
             <li>Adempiere a obblighi di legge, quando previsti (art. 6.1.c GDPR).</li>
           </ul>
@@ -81,6 +87,7 @@ export default function PrivacyPage() {
           </p>
           <ul>
             <li>Vercel Inc., per l’hosting del sito, i dati di navigazione e le statistiche anonime;</li>
+            <li>Google Ireland Limited, per Google Analytics e Google Tag Manager, solo con il suo consenso;</li>
             <li>Sanity AS, per la gestione dei contenuti e delle immagini del blog;</li>
             <li>il fornitore della casella di posta elettronica della titolare, che riceve le email.</li>
           </ul>
@@ -104,8 +111,8 @@ export default function PrivacyPage() {
 
           <h2>7. Cookie</h2>
           <p>
-            Il sito non usa cookie di profilazione né strumenti di tracciamento di terze parti. I dettagli sono nella{" "}
-            <Link href="/cookie-policy">cookie policy</Link>.
+            Il sito usa cookie di statistica di Google Analytics solo con il suo consenso, e nessun cookie
+            pubblicitario o di profilazione. I dettagli sono nella <Link href="/cookie-policy">cookie policy</Link>.
           </p>
 
           <p className="legal-updated">Ultimo aggiornamento: {legalUpdatedAt}.</p>

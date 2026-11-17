@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { ContactCta } from "@/components/contact-modal";
+import { CookiePreferencesButton } from "@/components/cookie-consent";
 import { contactPhone, contactPhoneHref, sedi } from "@/lib/contact";
 
 const nav = [
@@ -197,6 +198,8 @@ export function SiteFooter() {
           <Link href="/cookie-policy" className="hover:text-surface-dark-foreground">
             Cookie policy
           </Link>
+          {" · "}
+          <CookiePreferencesButton className="cursor-pointer hover:text-surface-dark-foreground" />
         </span>
       </div>
     </footer>
