@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Con Next 16.4 + next-sanity 13 la minificazione server di Turbopack rompe <SanityLive />
+  // in prerender ("error in the Server Components render"). Il codice client resta minificato.
+  experimental: { serverMinification: false },
   images: {
     remotePatterns: [
       {

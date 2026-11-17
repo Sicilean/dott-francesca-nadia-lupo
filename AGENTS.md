@@ -2,9 +2,9 @@
 
 Sito Next.js. Sviluppo locale con `npm run dev`.
 
-Il blog arriva da Sanity (`sanity/`). Lo studio è in `studio/` (`npm run studio`) e non fa parte del build Vercel. I percorsi (`/percorsi` e `/percorsi/[slug]`) sono dati in `lib/percorsi.ts`, non documenti Sanity. Le loro foto stanno in `public/percorsi/`.
+Il blog arriva da Sanity (`sanity/`). Lo studio Sanity è montato nel sito su `/studio` (`sanity.config.ts`, schemi in `studio/schemaTypes/`). I percorsi (`/percorsi` e `/percorsi/[slug]`) sono dati in `lib/percorsi.ts`, non documenti Sanity. Le loro foto stanno in `public/percorsi/`.
 
-`middleware.ts` mostra «In aggiornamento» solo su `francescanadialupo.it` e `www.francescanadialupo.it`. Il link `*.vercel.app` e localhost mostrano il sito completo. L’anteprima della pagina di attesa è `/in-aggiornamento`. `MAINTENANCE_MODE=false` la disattiva al deploy successivo. Tutto il sito è `noindex` finché è in lavorazione (`app/layout.tsx` e header nel middleware). Dettagli in `README.md`.
+Il sito è online e indicizzabile: pagina di attesa e `proxy.ts` sono stati rimossi al lancio. `/studio` è `noindex`. SEO, dati strutturati e `llms.txt` sono descritti in `README.md`.
 
 ## Commit e deploy
 

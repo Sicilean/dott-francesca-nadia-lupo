@@ -189,7 +189,15 @@ export function SiteFooter() {
       </div>
       <div className="site-wrap flex flex-col gap-2 border-t border-surface-dark-line py-5 text-xs text-surface-dark-muted sm:flex-row sm:justify-between">
         <span>© 2026 Francesca Nadia Lupo</span>
-        <span>Privacy · Cookie policy</span>
+        <span>
+          <Link href="/privacy" className="hover:text-surface-dark-foreground">
+            Privacy
+          </Link>
+          {" · "}
+          <Link href="/cookie-policy" className="hover:text-surface-dark-foreground">
+            Cookie policy
+          </Link>
+        </span>
       </div>
     </footer>
   );

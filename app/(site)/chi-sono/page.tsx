@@ -1,12 +1,25 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import Image from "next/image";
 import { ContactBand, PageIntro } from "@/components/site-chrome";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Chi sono",
   description:
     "Formazione, esperienza e approccio della Dott.ssa Francesca Nadia Lupo, psicologa e psicoterapeuta a Milano.",
-};
+  path: "/chi-sono",
+});
+
+/** Solo dati già scritti in questa pagina. */
+const summary = [
+  { label: "Iscrizione", value: "Ordine degli Psicologi della Lombardia, n. 03/8054, dal 2004" },
+  { label: "Specializzazione", value: "Psicoterapia individuale e di gruppo ad indirizzo psicoanalitico, COIRAG Milano, 2008, con lode" },
+  { label: "Psico-oncologia", value: "Esperienza decennale presso l’Istituto Europeo di Oncologia" },
+  { label: "Psico-cardiologia", value: "Responsabile del Servizio di Psicologia Clinica, Centro Cardiologico Monzino" },
+  { label: "Docenza", value: "Corsi e master universitari presso l’Università degli Studi di Milano" },
+  { label: "EMDR", value: "Abilitata all’esercizio dell’EMDR" },
+  { label: "Studio", value: "Co-fondatrice dello Studio di Psicoterapia Polispecialistico ConTesto (Opera)" },
+] as const;
 
 export default function ChiSonoPage() {
   return (
@@ -65,7 +78,7 @@ export default function ChiSonoPage() {
           />
         </div>
       </section>
-      <section className="site-wrap grid gap-10 py-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start lg:gap-12 lg:py-24">
+      <section className="site-wrap grid gap-10 py-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start lg:gap-16 lg:py-24">
         <div className="space-y-10">
           <div>
             <p className="eyebrow">Esperienze professionali</p>
@@ -102,7 +115,19 @@ export default function ChiSonoPage() {
             </p>
           </div>
         </div>
-        <div className="portrait-slot" aria-hidden />
+        <aside className="profile-summary" aria-labelledby="in-sintesi">
+          <p id="in-sintesi" className="eyebrow">
+            In sintesi
+          </p>
+          <dl>
+            {summary.map((item) => (
+              <div key={item.label}>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </aside>
       </section>
       <ContactBand />
     </main>

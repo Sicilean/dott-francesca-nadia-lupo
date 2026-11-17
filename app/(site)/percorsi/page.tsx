@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { ContactBand, PageIntro } from "@/components/site-chrome";
 import { getPercorsi } from "@/lib/percorsi";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Percorsi e aree di intervento",
   description:
     "Psicoterapia individuale e di coppia, sessuologia clinica, psico-cardiologia, psico-oncologia e terapia di gruppo a Milano.",
-};
+  path: "/percorsi",
+});
 
 export default function PercorsiPage() {
   const areas = getPercorsi();

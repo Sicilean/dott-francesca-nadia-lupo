@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
+import { JsonLd } from "@/components/json-ld";
+import { blogPostingSchema, breadcrumbSchema } from "@/lib/structured-data";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContactBand, PageIntro } from "@/components/site-chrome";
@@ -26,10 +29,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!post) return { title: "Articolo" };
 
-  return {
-    title: post.title,
-    description: post.excerpt ?? undefined,
-  };
+  const imageUrl = post.mainImage?.asset?.url;
+  return pageMetadata({
+    title: post.title ?? "Articolo",
+    description: post.excerpt ?? "",
+    path: `/blog/${slug}`,
+    type: "article",
+    publishedTime: post.publishedAt ?? undefined,
+    images: imageUrl
+      ? [{ url: `${imageUrl}?w=1200&h=630&fit=crop&auto=format`, width: 1200, height: 630, alt: post.mainImage?.alt ?? post.title ?? "" }]
+      : undefined,
+  });
 }
 
 export default async function PostPage({ params }: PageProps) {
@@ -79,6 +89,23 @@ export default async function PostPage({ params }: PageProps) {
         </div>
       </article>
       <ContactBand />
+      <JsonLd
+        data={blogPostingSchema({
+          slug,
+          title: post.title ?? "",
+          excerpt: post.excerpt,
+          publishedAt: post.publishedAt,
+          authorName: post.author?.name,
+          imageUrl: post.mainImage?.asset?.url,
+        })}
+      />
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Orizzonti psicologici", path: "/blog" },
+          { name: post.title ?? "Articolo", path: `/blog/${slug}` },
+        ])}
+      />
     </main>
   );
 }

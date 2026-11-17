@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowDown, ArrowUpRight } from "lucide-react";
 import { ContactCta } from "@/components/contact-modal";
 import { ContactBand } from "@/components/site-chrome";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Psicologa e psicoterapeuta a Milano",
   description:
     "Psicoterapia individuale e di coppia, sessuologia clinica, psico-cardiologia e psico-oncologia con la Dott.ssa Francesca Nadia Lupo a Milano.",
-};
+  path: "/",
+});
 
 const areas = [
   { title: "Terapia di gruppo", featured: true },
@@ -22,7 +24,7 @@ export default function HomePage() {
     <main>
       <section className="hero">
         <div className="hero-art" aria-hidden>
-          <img src="/foto-home.png" alt="" />
+          <Image src="/foto-home.webp" alt="" fill priority sizes="(min-width: 1024px) 48vw, 82vw" />
         </div>
         <div className="site-wrap relative z-10 grid items-start gap-10 py-12 lg:min-h-[720px] lg:grid-cols-[1.25fr_0.75fr] lg:items-end lg:pb-20 lg:pt-24">
           <div>

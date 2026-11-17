@@ -1,15 +1,15 @@
 # Francesca Nadia Lupo
 
-Sito vetrina della Dott.ssa Francesca Nadia Lupo. Il frontend pubblico è un'app Next.js (App Router) che legge i contenuti da Sanity. Lo studio Sanity vive in `studio/` ed è un'app separata: non viene buildata da Vercel.
+Sito vetrina della Dott.ssa Francesca Nadia Lupo. Il frontend pubblico è un'app Next.js (App Router) che legge i contenuti da Sanity. Lo studio Sanity è montato nel sito su `/studio`.
 
 Repository: [Sicilean/dott-francesca-nadia-lupo](https://github.com/Sicilean/dott-francesca-nadia-lupo).
 
 ## Stack
 
-- Next.js 15 e React 19, nella root del repository
+- Next.js 16 e React 19, nella root del repository
 - Tailwind CSS 4
 - Sanity (`next-sanity`) per i contenuti pubblicati
-- Sanity Studio 6 in `studio/`
+- Sanity Studio 6 montato su `/studio` (`next-sanity` 13)
 
 ## Pagine
 
@@ -21,7 +21,9 @@ Repository: [Sicilean/dott-francesca-nadia-lupo](https://github.com/Sicilean/dot
 | `/percorsi/[slug]` | `app/(site)/percorsi/[slug]/page.tsx` |
 | `/blog` | `app/(site)/blog/page.tsx` |
 | `/blog/[slug]` | `app/(site)/blog/[slug]/page.tsx` |
-| `/in-aggiornamento` | `app/in-aggiornamento/page.tsx` |
+| `/privacy` | `app/(site)/privacy/page.tsx` |
+| `/cookie-policy` | `app/(site)/cookie-policy/page.tsx` |
+| `/studio` | `app/studio/[[...tool]]/page.tsx` (Sanity Studio) |
 
 Il gruppo `(site)` non compare nell’URL. Header, footer e modale di contatto stanno in `components/site-frame.tsx`, montato da `app/(site)/layout.tsx`. La pagina di attesa è fuori da quel gruppo, quindi non ha navigazione. Uno slug sconosciuto passa da `app/(site)/[...slug]/page.tsx` e risponde 404 dentro il layout del sito.
 
@@ -31,7 +33,7 @@ I sei percorsi (terapia di gruppo, psicoterapia individuale, psicoterapia di cop
 
 `lib/accent-title.tsx` spezza un titolo in parte principale e accento tipografico. Lo usano la pagina articolo e la pagina percorso.
 
-Le sedi, il telefono e l’email stanno in `lib/contact.ts`. Il form si apre in una modale (`components/contact-modal.tsx`) dalle CTA, header e footer inclusi. Il footer elenca le quattro sedi. `/contatti` reindirizza alla home.
+Le sedi, il telefono e l’email stanno in `lib/contact.ts`. Le CTA, header e footer inclusi, aprono una modale (`components/contact-modal.tsx`) con telefono, email, Facebook e le quattro sedi. Non c’è un form: la dottoressa riceve solo per telefono ed email. Il footer elenca le quattro sedi. `/contatti` reindirizza alla home.
 
 `components/text-motion.tsx` spezza i titoli grandi (hero, aperture di pagina, titoli di sezione) sulle righe già marcate da un a capo e le fa salire una alla volta, circa 1,15 secondi, con un breve ritardo tra le righe. La sottolineatura si disegna quando la riga è quasi arrivata. Sopratitoli e frasi brevi passano da una leggera sfocatura al fuoco. Con `prefers-reduced-motion: reduce` il testo resta fermo. I titoli delle schede in `/percorsi` non usano questa entrata, così lo spostamento a destra in hover resta indipendente.
 
@@ -43,7 +45,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Il sito risponde su `http://localhost:3000`. L’anteprima della pagina di attesa è `http://localhost:3000/in-aggiornamento`.
+Il sito risponde su `http://localhost:3000`.
 
 Variabili in `.env.local` (mai committare questo file):
 
@@ -55,24 +57,39 @@ Variabili in `.env.local` (mai committare questo file):
 
 Senza le due variabili `NEXT_PUBLIC_*`, `sanity/env.ts` interrompe il build.
 
-## Pagina di attesa
+Variabili opzionali (anche su Vercel):
 
-`middleware.ts` copre solo `francescanadialupo.it` e `www.francescanadialupo.it`. Su quei domini la home è la pagina «In aggiornamento» e ogni altro percorso torna lì. Non c’è menu.
+| Variabile | Ruolo |
+| --- | --- |
+| `GOOGLE_SITE_VERIFICATION` | Valore del meta tag di Google Search Console. |
+| `BING_SITE_VERIFICATION` | Valore del meta tag `msvalidate.01` di Bing Webmaster Tools. |
 
-`localhost` e gli host `*.vercel.app` servono il sito completo. Il link del progetto Vercel è quello da passare alla cliente per rivedere gli aggiornamenti. Lo stesso deploy, aperto dal dominio pubblico, resta sulla pagina di attesa. Il dominio va collegato a questo deploy: un deploy precedente, senza `middleware.ts`, mostra il sito completo.
+## SEO, IA e statistiche
 
-`MAINTENANCE_MODE=false` disattiva la copertura anche sul dominio. Next legge la variabile durante la build: dopo il cambio serve un nuovo deploy. Per togliere la pagina del tutto, elimina `middleware.ts` e `app/in-aggiornamento/`.
+- `app/sitemap.ts` elenca pagine, percorsi e articoli Sanity. `app/robots.ts` ammette tutti i crawler, compresi quelli delle IA, e indica la sitemap.
+- `/llms.txt` e `/llms-full.txt` (`lib/llms.ts`) sono testi per le IA: profilo, percorsi, domande e risposte (`lib/faq.ts`), sedi e articoli. Riprendono solo contenuti già nel sito. Non sono collegati dalle pagine e inviano `X-Robots-Tag: noindex`, così non compaiono nei risultati di ricerca per le persone.
+- Vercel Web Analytics e Speed Insights sono montati in `app/layout.tsx`. Non usano cookie. Vanno attivati dalla dashboard Vercel del progetto.
+- IndexNow: la chiave è `public/caa131664ee801f75ae8a17c8a6d4fff.txt`. Dopo un deploy a sito pubblico, `npm run indexnow` invia tutti gli URL della sitemap; `npm run indexnow -- /blog/slug` invia solo quelli indicati.
 
-Finché il sito è in lavorazione, ogni pagina — dominio pubblico e link Vercel — invia `noindex`. Il meta sta in `app/layout.tsx` e l’header `X-Robots-Tag` nel middleware. Va tolto quando il sito può essere indicizzato.
+## Indicizzazione
+
+Il sito è pubblico e indicizzabile (`robots` in `app/layout.tsx`, `app/robots.ts`). Restano fuori dai risultati di ricerca solo `/studio` (`noindex` e `Disallow`) e i testi per le IA `/llms.txt` e `/llms-full.txt` (header `noindex`, ma leggibili dai crawler). La pagina di attesa e `proxy.ts` sono stati rimossi al lancio.
+
+Ogni pagina ha canonical, Open Graph e Twitter da `lib/metadata.ts`. L’immagine di anteprima predefinita è `app/opengraph-image.tsx`; percorsi e articoli usano la propria foto. I dati strutturati schema.org sono in `lib/structured-data.ts`: persona e sito su tutte le pagine (`app/(site)/layout.tsx`), `Service` e `BreadcrumbList` sui percorsi, `BlogPosting` e `BreadcrumbList` sugli articoli.
+
+Il vecchio sito non ha URL archiviati né indicizzati. `app/(site)/[...slug]/page.tsx` reindirizza (308) gli indirizzi sconosciuti il cui ultimo segmento è lo slug di un percorso o di un articolo; il resto risponde 404. Se Search Console segnala altri vecchi URL in errore, aggiungili a `redirects()` in `next.config.ts`.
 
 ## Sanity Studio
 
-```sh
-npm install --prefix studio
-npm run studio
-```
+Lo studio è dentro il sito: `http://localhost:3000/studio` in locale, `https://francescanadialupo.it/studio` online (raggiungibile anche durante la pagina di attesa). Si accede con l’account Sanity del progetto.
 
-Lo studio usa il progetto `9rsacix1` e il dataset `production` (`studio/sanity.config.ts`). Gli schemi dei documenti sono in `studio/schemaTypes/`. Il deploy dello studio è `npm run deploy --prefix studio` (`sanity deploy`), separato dal deploy Vercel del sito.
+- Configurazione: `sanity.config.ts` (progetto `9rsacix1`, dataset `production`, `basePath: "/studio"`).
+- Pagina: `app/studio/[[...tool]]/page.tsx` (`NextStudio`, `noindex`). È esclusa da `robots.txt` e dalle statistiche.
+- Schemi: `studio/schemaTypes/`; struttura del menù: `studio/structure.ts`.
+- Tipi TypeScript delle query: `npm run typegen` (usa `sanity.cli.ts`, scrive `sanity.types.ts`).
+- Gli indirizzi autorizzati sono nelle impostazioni CORS del progetto Sanity: `http://localhost:3000`, `https://francescanadialupo.it`, `https://dott-francesca-nadia-lupo.vercel.app` (con credenziali). Un nuovo dominio va aggiunto lì.
+
+`next.config.ts` disattiva la minificazione server di Turbopack: con Next 16.4 e `next-sanity` 13 rompeva il prerender di `<SanityLive />`.
 
 ## Git e commit
 

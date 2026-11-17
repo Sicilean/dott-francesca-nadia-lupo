@@ -14,7 +14,7 @@
 
 export declare const internalGroqTypeReferenceTo: unique symbol;
 
-// Source: schema.json
+// Source: studio/schema.json
 export type AuthorReference = {
   _ref: string;
   _type: "reference";
@@ -229,7 +229,7 @@ export type AllSanitySchemaTypes =
   | SanityImageAsset
   | Geopoint;
 
-// Source: ../sanity/queries.ts
+// Source: sanity/queries.ts
 // Variable: POSTS_QUERY
 // Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc) {    _id,    title,    "slug": slug.current,    category,    excerpt,    featured,    featuredExcerpt,    author->{ name, role }  }
 export type POSTS_QUERY_RESULT = Array<{
@@ -246,7 +246,7 @@ export type POSTS_QUERY_RESULT = Array<{
   };
 }>;
 
-// Source: ../sanity/queries.ts
+// Source: sanity/queries.ts
 // Variable: POST_QUERY
 // Query: *[_type == "post" && slug.current == $slug][0] {    _id,    title,    "slug": slug.current,    category,    excerpt,    publishedAt,    author->{ name, role },    body[]{      ...,      _type == "image" => {        alt,        caption,        hotspot,        crop,        asset->{          _id,          url,          metadata {            lqip,            dimensions { width, height }          }        }      }    },    mainImage {      alt,      hotspot,      crop,      asset->{        _id,        url,        metadata {          lqip,          dimensions { width, height }        }      }    }  }
 export type POST_QUERY_RESULT = {
@@ -318,11 +318,22 @@ export type POST_QUERY_RESULT = {
   } | null;
 } | null;
 
+// Source: sanity/queries.ts
+// Variable: SITEMAP_POSTS_QUERY
+// Query: *[_type == "post" && defined(slug.current)] | order(publishedAt desc) {    "slug": slug.current,    title,    excerpt,    "updatedAt": _updatedAt  }
+export type SITEMAP_POSTS_QUERY_RESULT = Array<{
+  slug: string;
+  title: string;
+  excerpt: string;
+  updatedAt: string;
+}>;
+
 // Query TypeMap
 declare global {
   interface SanityQueries {
     '\n  *[_type == "post" && defined(slug.current)] | order(publishedAt desc) {\n    _id,\n    title,\n    "slug": slug.current,\n    category,\n    excerpt,\n    featured,\n    featuredExcerpt,\n    author->{ name, role }\n  }\n': POSTS_QUERY_RESULT;
     '\n  *[_type == "post" && slug.current == $slug][0] {\n    _id,\n    title,\n    "slug": slug.current,\n    category,\n    excerpt,\n    publishedAt,\n    author->{ name, role },\n    body[]{\n      ...,\n      _type == "image" => {\n        alt,\n        caption,\n        hotspot,\n        crop,\n        asset->{\n          _id,\n          url,\n          metadata {\n            lqip,\n            dimensions { width, height }\n          }\n        }\n      }\n    },\n    mainImage {\n      alt,\n      hotspot,\n      crop,\n      asset->{\n        _id,\n        url,\n        metadata {\n          lqip,\n          dimensions { width, height }\n        }\n      }\n    }\n  }\n': POST_QUERY_RESULT;
+    '\n  *[_type == "post" && defined(slug.current)] | order(publishedAt desc) {\n    "slug": slug.current,\n    title,\n    excerpt,\n    "updatedAt": _updatedAt\n  }\n': SITEMAP_POSTS_QUERY_RESULT;
   }
 }
 // Lets @sanity/client releases that predate the global registry read it too

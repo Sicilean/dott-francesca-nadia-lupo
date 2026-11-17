@@ -5,18 +5,22 @@ export const contactFacebookHref = "https://www.facebook.com/dallacuraalprenders
 
 export const sedi = [
   {
+    city: "Milano",
     lines: ["Via Bartolomeo D’Alviano, 13", "20146 Milano"],
     maps: "https://www.google.com/maps/search/?api=1&query=Via+Bartolomeo+D%27Alviano+13,+20146+Milano",
   },
   {
+    city: "Opera",
     lines: ["Via Dandolo, 1", "20073 Opera (MI)"],
     maps: "https://www.google.com/maps/search/?api=1&query=Via+Dandolo+1,+20073+Opera",
   },
   {
+    city: "Milano",
     lines: ["Via Santa Maria Valle, 4", "20123 Milano"],
     maps: "https://www.google.com/maps/search/?api=1&query=Via+Santa+Maria+Valle+4,+20123+Milano",
   },
   {
+    city: "Piacenza",
     lines: ["Vicolo Buffalari, 2", "29121 Piacenza"],
     maps: "https://www.google.com/maps/search/?api=1&query=Vicolo+Buffalari+2,+29121+Piacenza",
   },

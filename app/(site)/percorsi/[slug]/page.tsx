@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbSchema, percorsoSchema } from "@/lib/structured-data";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContactBand, PageIntro } from "@/components/site-chrome";
@@ -20,10 +23,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!area) return { title: "Percorso" };
 
-  return {
+  return pageMetadata({
     title: area.title,
     description: area.excerpt,
-  };
+    path: `/percorsi/${area.slug}`,
+  });
 }
 
 export default async function PercorsoPage({ params }: PageProps) {
@@ -66,6 +70,14 @@ export default async function PercorsoPage({ params }: PageProps) {
         </div>
       </article>
       <ContactBand />
+      <JsonLd data={percorsoSchema(area)} />
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Percorsi", path: "/percorsi" },
+          { name: area.title, path: `/percorsi/${area.slug}` },
+        ])}
+      />
     </main>
   );
 }

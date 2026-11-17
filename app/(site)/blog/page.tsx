@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/metadata";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { ContactBand, PageIntro } from "@/components/site-chrome";
 import { sanityFetch } from "@/sanity/live";
 import { POSTS_QUERY } from "@/sanity/queries";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Orizzonti psicologici",
   description:
     "Articoli, podcast e riflessioni di psicologia, relazioni e adolescenza della Dott.ssa Francesca Nadia Lupo.",
-};
+  path: "/blog",
+});
 
 export default async function BlogPage() {
   const { data: posts } = await sanityFetch({ query: POSTS_QUERY });

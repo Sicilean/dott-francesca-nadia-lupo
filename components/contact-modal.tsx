@@ -149,7 +149,7 @@ function ContactModal() {
               Richiesta di un <em>colloquio.</em>
             </h2>
             <p id={descriptionId} className="contact-modal-lead">
-              Può chiamare oppure lasciare un messaggio. Il modulo è una dimostrazione e non invia ancora i dati.
+              Può telefonare o scrivere un’email per fissare un primo incontro in uno degli studi.
             </p>
           </div>
           <button type="button" className="contact-modal-close" onClick={close}>

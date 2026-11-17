@@ -54,3 +54,12 @@ export const POST_QUERY = defineQuery(/* groq */ `
     }
   }
 `);
+
+export const SITEMAP_POSTS_QUERY = defineQuery(/* groq */ `
+  *[_type == "post" && defined(slug.current)] | order(publishedAt desc) {
+    "slug": slug.current,
+    title,
+    excerpt,
+    "updatedAt": _updatedAt
+  }
+`);
